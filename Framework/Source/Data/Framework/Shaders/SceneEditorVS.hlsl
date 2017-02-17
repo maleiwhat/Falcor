@@ -25,6 +25,17 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+
+#ifdef PATH_RENDERER
+
+#include "ShaderCommon.h"
+float4 main(float3 position : POSITION) : SV_POSITION
+{
+    return mul(gCam.viewProjMat, float4(position, 1));
+}
+
+#else
+
 #include "SceneEditorCommon.hlsli"
 
 EDITOR_VS_OUT main(VS_IN vIn)
@@ -47,3 +58,5 @@ EDITOR_VS_OUT main(VS_IN vIn)
 
     return vOut;
 }
+
+#endif

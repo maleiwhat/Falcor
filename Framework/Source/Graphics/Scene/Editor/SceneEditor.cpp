@@ -368,12 +368,12 @@ namespace Falcor
         , mModelLoadFlags(modelLoadFlags)
     {
         mpRenderContext = gpDevice->getRenderContext();
+        mpPathRenderer = PathRenderer::create();
 
-        initializeEditorScenes();
+        initializeEditorRendering();
         initializeEditorObjects();
 
         // Copy camera transform from master scene
-        
         const auto& pSceneCamera = mpScene->getActiveCamera();
         const auto& pEditorCamera = mpEditorScene->getActiveCamera();
 
@@ -398,10 +398,8 @@ namespace Falcor
         mpEditorSceneRenderer->update(currentTime);
     }
 
-    void SceneEditor::initializeEditorScenes()
+    void SceneEditor::initializeEditorRendering()
     {
-        mpSelectionGraphicsState = GraphicsState::create();
-
         auto backBufferFBO = gpDevice->getSwapChainFbo();
         const float backBufferWidth = backBufferFBO->getWidth();
         const float backBufferHeight = backBufferFBO->getHeight();
@@ -410,16 +408,18 @@ namespace Falcor
         // Selection Wireframe Scene
         //
 
+        mpSelectionGraphicsState = GraphicsState::create();
+
         // Rasterizer State for rendering wireframe of selected object
-        RasterizerState::Desc rsDesc;
-        rsDesc.setFillMode(RasterizerState::FillMode::Wireframe).setCullMode(RasterizerState::CullMode::None).setDepthBias(-5, 0.0f);
-        mpSelectionGraphicsState->setRasterizerState(RasterizerState::create(rsDesc));
+        RasterizerState::Desc wireFrameRSDesc;
+        wireFrameRSDesc.setFillMode(RasterizerState::FillMode::Wireframe).setCullMode(RasterizerState::CullMode::None).setDepthBias(-5, 0.0f);
+        mpSelectionGraphicsState->setRasterizerState(RasterizerState::create(wireFrameRSDesc));
 
         // Depth test
         DepthStencilState::Desc dsDesc;
         dsDesc.setDepthTest(true);
-        DepthStencilState::SharedPtr dsState = DepthStencilState::create(dsDesc);
-        mpSelectionGraphicsState->setDepthStencilState(dsState);
+        DepthStencilState::SharedPtr depthTestDS = DepthStencilState::create(dsDesc);
+        mpSelectionGraphicsState->setDepthStencilState(depthTestDS);
 
         // Shader
         mpColorProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditorVS.hlsl", "Framework/Shaders/SceneEditorPS.hlsl");
@@ -443,6 +443,22 @@ namespace Falcor
         mpEditorScene = Scene::create(backBufferWidth / backBufferHeight);
         mpEditorSceneRenderer = SceneEditorRenderer::create(mpEditorScene);
         mpEditorPicker = Picking::create(mpEditorScene, backBufferWidth, backBufferHeight);
+
+        //
+        // Path Shaders
+        //
+        RasterizerState::Desc lineRSDesc;
+        lineRSDesc.setFillMode(RasterizerState::FillMode::Solid).setCullMode(RasterizerState::CullMode::None);
+
+        GraphicsProgram::DefineList defines;
+        defines.add("PATH_RENDERER");
+        mpPathProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditorVS.hlsl", "Framework/Shaders/SceneEditorPS.hlsl", defines);
+        mpPathProgramVars = GraphicsVars::create(mpPathProgram->getActiveVersion()->getReflector());
+
+        mpPathGraphicsState = GraphicsState::create();
+        mpPathGraphicsState->setProgram(mpPathProgram);
+        mpPathGraphicsState->setDepthStencilState(depthTestDS);
+        mpPathGraphicsState->setRasterizerState(RasterizerState::create(lineRSDesc));
     }
 
     void SceneEditor::initializeEditorObjects()
@@ -532,6 +548,8 @@ namespace Falcor
 
     void SceneEditor::render()
     {
+        Camera *pCamera = mpEditorScene->getActiveCamera().get();
+
         // Draw to same Fbo that was set before this call
         mpSelectionGraphicsState->setFbo(mpRenderContext->getGraphicsState()->getFbo());
 
@@ -544,14 +562,27 @@ namespace Falcor
             mpColorProgramVars["ConstColorCB"]["gColor"] = glm::vec3(0.25f, 1.0f, 0.63f);
 
             mpRenderContext->setGraphicsVars(mpColorProgramVars);
-            mpSelectionSceneRenderer->renderScene(mpRenderContext.get(), mpEditorScene->getActiveCamera().get());
+            mpSelectionSceneRenderer->renderScene(mpRenderContext.get(), pCamera);
         }
 
         //
         // Camera/Light Models, and Gizmos
         //
         updateEditorObjectTransforms();
-        mpEditorSceneRenderer->renderScene(mpRenderContext.get(), mpEditorScene->getActiveCamera().get());
+        mpEditorSceneRenderer->renderScene(mpRenderContext.get(), pCamera);
+
+        //
+        // Paths
+        //
+
+        if (mpScene->getPathCount() > 0)
+        {
+            mpPathGraphicsState->setFbo(mpRenderContext->getGraphicsState()->getFbo());
+            mpRenderContext->setGraphicsState(mpPathGraphicsState);
+            mpPathProgramVars["ConstColorCB"]["gColor"] = glm::vec3(0.25f, 1.0f, 0.63f);
+            mpRenderContext->setGraphicsVars(mpPathProgramVars);
+            mpPathRenderer->renderPath(mpScene->getActivePath(), mpRenderContext.get(), pCamera);
+        }
     }
 
     void SceneEditor::updateEditorObjectTransforms()

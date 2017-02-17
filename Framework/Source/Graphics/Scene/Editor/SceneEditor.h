@@ -29,6 +29,7 @@
 #include <vector>
 #include <set>
 #include "Graphics/Paths/PathEditor.h"
+#include "Graphics/Paths/PathRenderer.h"
 #include "Utils/Picking/Picking.h"
 #include "Graphics/Scene/Editor/Gizmo.h"
 #include "Graphics/Scene/Editor/SceneEditorRenderer.h"
@@ -61,12 +62,6 @@ namespace Falcor
 
         SceneEditor(const Scene::SharedPtr& pScene, const uint32_t modelLoadFlags);
         Scene::SharedPtr mpScene;
-
-        struct
-        {
-            uint32_t ActivePath = 0;
-            PathEditor::UniquePtr pEditor;
-        } mPathEditor;
 
         bool mSceneDirty = false;
 
@@ -135,7 +130,7 @@ namespace Falcor
         //
 
         // Initializes Editor helper-scenes, Picking, and Rendering
-        void initializeEditorScenes();
+        void initializeEditorRendering();
 
         // Initializes Editor's representation of the scene being edited
         void initializeEditorObjects();
@@ -236,5 +231,22 @@ namespace Falcor
         // Maps between light models and master scene light ID
         std::unordered_map<uint32_t, uint32_t> mLightIDEditorToScene;
         std::unordered_map<uint32_t, uint32_t> mLightIDSceneToEditor;
+
+
+        //
+        // Paths
+        //
+
+        struct
+        {
+            uint32_t ActivePath = 0;
+            PathEditor::UniquePtr pEditor;
+        } mPathEditor;
+
+        PathRenderer::UniquePtr mpPathRenderer;
+
+        GraphicsState::SharedPtr mpPathGraphicsState;
+        GraphicsProgram::SharedPtr mpPathProgram;
+        GraphicsVars::SharedPtr mpPathProgramVars;
     };
 }

@@ -125,17 +125,8 @@ namespace Falcor
                 if(animTime >= curKey.time && animTime < nextKey.time)
                 {
                     // Found the animation keys. Interpolate
-                    switch(mMode)
-                    {
-                    case Interpolation::Linear:
-                        linearInterpolation(i, animTime);
-                        break;
-                    case Interpolation::CubicSpline:
-                        cubicSplineInterpolation(i, animTime);
-                        break;
-                    default:
-                        should_not_get_here();
-                    }
+                    float t = getInterpolationFactor(i, currentTime);
+                    mCurrentFrame = getFrameAt(i, t);
                     foundFrame = true;
                     break;
                 }
@@ -149,26 +140,51 @@ namespace Falcor
         }
     }
 
-    void ObjectPath::linearInterpolation(uint32_t currentFrame, double currentTime)
+    ObjectPath::Frame ObjectPath::getFrameAt(uint32_t frameID, float t)
+    {
+        switch (mMode)
+        {
+        case Interpolation::Linear:
+            return linearInterpolation(frameID, t);
+        case Interpolation::CubicSpline:
+            return cubicSplineInterpolation(frameID, t);
+        default:
+            should_not_get_here();
+        }
+
+        return Frame();
+    }
+
+    float ObjectPath::getInterpolationFactor(uint32_t frameID, double currentTime) const
+    {
+        const Frame& current = mKeyFrames[frameID];
+        const Frame& next = mKeyFrames[frameID + 1];
+        double delta = next.time - current.time;
+        double curTime = currentTime - current.time;
+        return float(curTime / delta);
+    }
+
+    ObjectPath::Frame ObjectPath::linearInterpolation(uint32_t currentFrame, float t) const
     {
         const Frame& current = mKeyFrames[currentFrame];
         const Frame& next = mKeyFrames[currentFrame + 1];
-        double delta = next.time - current.time;
-        double curTime = currentTime - current.time;
-        float factor = float(curTime / delta);
 
-        mCurrentFrame.position = glm::mix(current.position, next.position, factor);
-        mCurrentFrame.target = glm::mix(current.target, next.target, factor);
-        mCurrentFrame.up = glm::mix(current.up, next.up, factor);
+        Frame result;
+        result.position = glm::mix(current.position, next.position, t);
+        result.target = glm::mix(current.target, next.target, t);
+        result.up = glm::mix(current.up, next.up, t);
+        result.time = glm::mix(current.time, next.time, t);
+
+        return result;
     }
 
-    void ObjectPath::cubicSplineInterpolation(uint32_t currentFrame, double currentTime)
+    ObjectPath::Frame ObjectPath::cubicSplineInterpolation(uint32_t currentFrame, float t)
     {
-        if(mDirty)
+        if (mDirty)
         {
             mDirty = false;
             std::vector<glm::vec3> positions, targets, ups;
-            for(auto& a : mKeyFrames)
+            for (auto& a : mKeyFrames)
             {
                 positions.push_back(a.position);
                 targets.push_back(a.target);
@@ -176,19 +192,20 @@ namespace Falcor
             }
 
             mpPositionSpline = std::make_unique<Vec3CubicSpline>(positions.data(), uint32_t(mKeyFrames.size()));
-            mpTargetSpline   = std::make_unique<Vec3CubicSpline>(targets.data(),   uint32_t(mKeyFrames.size()));
-            mpUpSpline       = std::make_unique<Vec3CubicSpline>(ups.data(),       uint32_t(mKeyFrames.size()));
+            mpTargetSpline = std::make_unique<Vec3CubicSpline>(targets.data(), uint32_t(mKeyFrames.size()));
+            mpUpSpline = std::make_unique<Vec3CubicSpline>(ups.data(), uint32_t(mKeyFrames.size()));
         }
 
         const Frame& current = mKeyFrames[currentFrame];
         const Frame& next = mKeyFrames[currentFrame + 1];
-        double delta = next.time - current.time;
-        double curTime = currentTime - current.time;
-        float factor = (float)(curTime / delta);
 
-        mCurrentFrame.position = mpPositionSpline->interpolate(currentFrame, factor);
-        mCurrentFrame.target = mpTargetSpline->interpolate(currentFrame, factor);
-        mCurrentFrame.up = mpUpSpline->interpolate(currentFrame, factor);
+        Frame result;
+        result.position = mpPositionSpline->interpolate(currentFrame, t);
+        result.target = mpTargetSpline->interpolate(currentFrame, t);
+        result.up = mpUpSpline->interpolate(currentFrame, t);
+        result.time = glm::mix(current.time, next.time, t);
+
+        return result;
     }
 
     void ObjectPath::attachObject(const IMovableObject::SharedPtr& pObject)
@@ -220,4 +237,5 @@ namespace Falcor
         removeKeyFrame(frameID);
         return addKeyFrame(time, Frame.position, Frame.target, Frame.up);
     }
+
 }

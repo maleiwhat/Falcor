@@ -84,11 +84,17 @@ namespace Falcor
         void setFrameTarget(uint32_t frameID, const glm::vec3& target) { mKeyFrames[frameID].target = target; }
         void setFrameUp(uint32_t frameID, const glm::vec3& up) { mKeyFrames[frameID].up = up; }
         uint32_t setFrameTime(uint32_t frameID, float time);
+
+        Frame getFrameAt(uint32_t frameID, float t);
+
     private:
         ObjectPath() = default;
-        void linearInterpolation(uint32_t currentFrame, double currentTime);
-        void cubicSplineInterpolation(uint32_t currentFrame, double currentTime);
-        
+
+        float getInterpolationFactor(uint32_t frameID, double currentTime) const;
+
+        Frame linearInterpolation(uint32_t currentFrame, float t) const;
+        Frame cubicSplineInterpolation(uint32_t currentFrame, float t);
+
         std::vector<Frame> mKeyFrames;
         std::vector<IMovableObject::SharedPtr> mpObjects;
         std::string mName;

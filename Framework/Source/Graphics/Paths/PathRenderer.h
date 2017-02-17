@@ -14,7 +14,7 @@
 #    from this software without specific prior written permission.
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THEa
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
 # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
@@ -25,53 +25,36 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+#pragma once
 
-#ifndef PICKING
-cbuffer ConstColorCB : register(b0)
+#include "Graphics/Paths/ObjectPath.h"
+#include "API/VAO.h"
+
+namespace Falcor
 {
-    float3 gColor;
-};
-#endif
+    class RenderContext;
+    class Camera;
 
-#ifdef PATH_RENDERER
-
-float4 main(float4 position : SV_POSITION) : SV_TARGET
-{
-    return float4(gColor, 1);
-}
-
-#else
-
-#include "SceneEditorCommon.hlsli"
-
-// PS Output
-#ifdef PICKING
-#define PS_OUT uint
-#else
-#define PS_OUT vec4
-#endif
-
-PS_OUT main(EDITOR_VS_OUT vOut) : SV_TARGET
-{
-    float3 toCamera = normalize(gCam.position - vOut.vOut.posW);
-
-#ifdef CULL_REAR_SECTION
-    if(dot(toCamera, vOut.toVertex) < -0.1)
+    class PathRenderer
     {
-        discard;
-    }
-#endif
+    public:
 
-#ifdef PICKING
-    return vOut.drawID;
-#else
-    #ifdef SHADING
-        float shading = lerp(0.5, 1, dot(toCamera, vOut.vOut.normalW));
-        return vec4(gColor * shading, 1);
-    #else
-        return vec4(gColor, 1);
-    #endif
-#endif
+        static const uint32_t kMaxVertices = 6000;
+
+        using UniquePtr = std::unique_ptr<PathRenderer>;
+        using UniqueConstPtr = std::unique_ptr<const PathRenderer>;
+
+        static UniquePtr create(uint32_t maxVertices = kMaxVertices);
+
+        void renderPath(const ObjectPath::SharedPtr& pPath, RenderContext* pContext, Camera* pCamera);
+
+    private:
+        PathRenderer(uint32_t maxVertices);
+
+        void setCameraData(RenderContext* pContext, Camera* pCamera);
+
+        Buffer::SharedPtr mpVertexBuffer;
+        Vao::SharedPtr mpVao;
+        std::vector<glm::vec3> mVertexData;
+    };
 }
-
-#endif
