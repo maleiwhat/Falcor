@@ -26,23 +26,23 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
+#include "SceneEditorCommon.hlsli"
+
+#ifdef DEBUG_DRAW
+
+float4 main(DEBUG_DRAW_VS_OUT vOut) : SV_TARGET
+{
+    return float4(vOut.color, 1);
+}
+
+#else //////////////////////////////////////////////////////////////////////////////////////
+
 #ifndef PICKING
 cbuffer ConstColorCB : register(b0)
 {
     float3 gColor;
 };
 #endif
-
-#ifdef PATH_RENDERER
-
-float4 main(float4 position : SV_POSITION) : SV_TARGET
-{
-    return float4(gColor, 1);
-}
-
-#else
-
-#include "SceneEditorCommon.hlsli"
 
 // PS Output
 #ifdef PICKING

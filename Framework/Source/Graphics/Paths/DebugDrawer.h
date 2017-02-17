@@ -35,26 +35,41 @@ namespace Falcor
     class RenderContext;
     class Camera;
 
-    class PathRenderer
+    class DebugDrawer
     {
     public:
 
-        static const uint32_t kMaxVertices = 6000;
+        static const uint32_t kMaxVertices = 10000;
 
-        using UniquePtr = std::unique_ptr<PathRenderer>;
-        using UniqueConstPtr = std::unique_ptr<const PathRenderer>;
+        using UniquePtr = std::unique_ptr<DebugDrawer>;
+        using UniqueConstPtr = std::unique_ptr<const DebugDrawer>;
 
         static UniquePtr create(uint32_t maxVertices = kMaxVertices);
 
-        void renderPath(const ObjectPath::SharedPtr& pPath, RenderContext* pContext, Camera* pCamera);
+        void setColor(const glm::vec3& color) { mCurrentColor = color; }
+
+        void addLine(const glm::vec3& a, const glm::vec3& b);
+
+        void addPath(const ObjectPath::SharedPtr& pPath);
+
+        void render(RenderContext* pContext, Camera* pCamera);
 
     private:
-        PathRenderer(uint32_t maxVertices);
+        DebugDrawer(uint32_t maxVertices);
 
         void setCameraData(RenderContext* pContext, Camera* pCamera);
 
+        glm::vec3 mCurrentColor;
+
+        struct LineVertex
+        {
+            glm::vec3 position;
+            glm::vec3 color;
+        };
+
+        VertexLayout::SharedPtr mpVertexLayout;
         Buffer::SharedPtr mpVertexBuffer;
         Vao::SharedPtr mpVao;
-        std::vector<glm::vec3> mVertexData;
+        std::vector<LineVertex> mVertexData;
     };
 }

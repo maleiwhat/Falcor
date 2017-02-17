@@ -419,7 +419,7 @@
     <ClCompile Include="Graphics\Model\ModelRenderer.cpp" />
     <ClCompile Include="Graphics\Paths\ObjectPath.cpp" />
     <ClCompile Include="Graphics\Paths\PathEditor.cpp" />
-    <ClCompile Include="Graphics\Paths\PathRenderer.cpp" />
+    <ClCompile Include="Graphics\Paths\DebugDrawer.cpp" />
     <ClCompile Include="Graphics\Program.cpp" />
     <ClCompile Include="Graphics\GraphicsState.cpp" />
     <ClCompile Include="Graphics\Scene\Editor\Gizmo.cpp">
@@ -810,7 +810,7 @@
     <ClInclude Include="Graphics\Paths\MovableObject.h" />
     <ClInclude Include="Graphics\Paths\ObjectPath.h" />
     <ClInclude Include="Graphics\Paths\PathEditor.h" />
-    <ClInclude Include="Graphics\Paths\PathRenderer.h" />
+    <ClInclude Include="Graphics\Paths\DebugDrawer.h" />
     <ClInclude Include="Graphics\Program.h" />
     <ClInclude Include="Graphics\GraphicsState.h" />
     <ClInclude Include="Graphics\Scene\Editor\Gizmo.h">

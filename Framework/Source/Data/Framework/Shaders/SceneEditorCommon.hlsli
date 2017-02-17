@@ -41,3 +41,15 @@ struct EDITOR_VS_OUT
     float3 toVertex : VERTEX_DIR;
 #endif
 };
+
+struct DEBUG_DRAW_VS_IN
+{
+    float3 position : POSITION;
+    float3 color : COLOR;
+};
+
+struct DEBUG_DRAW_VS_OUT
+{
+    float4 position : SV_POSITION;
+    float3 color : COLOR;
+};

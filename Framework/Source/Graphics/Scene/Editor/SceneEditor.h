@@ -29,7 +29,7 @@
 #include <vector>
 #include <set>
 #include "Graphics/Paths/PathEditor.h"
-#include "Graphics/Paths/PathRenderer.h"
+#include "Graphics/Paths/DebugDrawer.h"
 #include "Utils/Picking/Picking.h"
 #include "Graphics/Scene/Editor/Gizmo.h"
 #include "Graphics/Scene/Editor/SceneEditorRenderer.h"
@@ -232,10 +232,11 @@ namespace Falcor
         std::unordered_map<uint32_t, uint32_t> mLightIDEditorToScene;
         std::unordered_map<uint32_t, uint32_t> mLightIDSceneToEditor;
 
-
         //
         // Paths
         //
+
+        void renderPath();
 
         struct
         {
@@ -243,7 +244,7 @@ namespace Falcor
             PathEditor::UniquePtr pEditor;
         } mPathEditor;
 
-        PathRenderer::UniquePtr mpPathRenderer;
+        DebugDrawer::UniquePtr mpDebugDrawer;
 
         GraphicsState::SharedPtr mpPathGraphicsState;
         GraphicsProgram::SharedPtr mpPathProgram;

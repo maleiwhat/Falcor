@@ -45,6 +45,8 @@ namespace Falcor
         void render(Gui* pGui);
         void setCamera(const Camera::SharedPtr& pCamera);
 
+        const ObjectPath::SharedPtr& getPath() const { return mpPath; }
+
     private:
         PathEditor(const ObjectPath::SharedPtr& pPath, const Camera::SharedPtr& pCamera, pfnEditComplete editCompleteCB);
 

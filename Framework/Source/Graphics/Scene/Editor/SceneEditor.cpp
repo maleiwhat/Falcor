@@ -368,7 +368,7 @@ namespace Falcor
         , mModelLoadFlags(modelLoadFlags)
     {
         mpRenderContext = gpDevice->getRenderContext();
-        mpPathRenderer = PathRenderer::create();
+        mpDebugDrawer = DebugDrawer::create();
 
         initializeEditorRendering();
         initializeEditorObjects();
@@ -451,7 +451,7 @@ namespace Falcor
         lineRSDesc.setFillMode(RasterizerState::FillMode::Solid).setCullMode(RasterizerState::CullMode::None);
 
         GraphicsProgram::DefineList defines;
-        defines.add("PATH_RENDERER");
+        defines.add("DEBUG_DRAW");
         mpPathProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditorVS.hlsl", "Framework/Shaders/SceneEditorPS.hlsl", defines);
         mpPathProgramVars = GraphicsVars::create(mpPathProgram->getActiveVersion()->getReflector());
 
@@ -556,6 +556,7 @@ namespace Falcor
         //
         // Rendered selected model wireframe
         //
+
         if (mSelectedInstances.empty() == false)
         {
             mpRenderContext->setGraphicsState(mpSelectionGraphicsState);
@@ -568,6 +569,7 @@ namespace Falcor
         //
         // Camera/Light Models, and Gizmos
         //
+
         updateEditorObjectTransforms();
         mpEditorSceneRenderer->renderScene(mpRenderContext.get(), pCamera);
 
@@ -575,13 +577,9 @@ namespace Falcor
         // Paths
         //
 
-        if (mpScene->getPathCount() > 0)
+        if (mPathEditor.pEditor != nullptr)
         {
-            mpPathGraphicsState->setFbo(mpRenderContext->getGraphicsState()->getFbo());
-            mpRenderContext->setGraphicsState(mpPathGraphicsState);
-            mpPathProgramVars["ConstColorCB"]["gColor"] = glm::vec3(0.25f, 1.0f, 0.63f);
-            mpRenderContext->setGraphicsVars(mpPathProgramVars);
-            mpPathRenderer->renderPath(mpScene->getActivePath(), mpRenderContext.get(), pCamera);
+            renderPath();
         }
     }
 
@@ -590,7 +588,6 @@ namespace Falcor
         // Update Gizmo model
         if (mSelectedInstances.empty() == false)
         {
-            // #TODO When Ctrl Click working, average position
             const auto& activeInstance = mpSelectionScene->getModelInstance(0, 0);
             mGizmos[(uint32_t)mActiveGizmoType]->setTransform(mpEditorScene->getActiveCamera(), activeInstance);
         }
@@ -623,6 +620,20 @@ namespace Falcor
         pInstance->setUpVector(pCamera->getUpVector());
     }
 
+    void SceneEditor::renderPath()
+    {
+        assert(mPathEditor.pEditor != nullptr);
+
+        mpDebugDrawer->setColor(glm::vec3(0.25f, 1.0f, 0.63f));
+        mpDebugDrawer->addPath(mPathEditor.pEditor->getPath());
+
+        mpPathGraphicsState->setFbo(mpRenderContext->getGraphicsState()->getFbo());
+        mpRenderContext->setGraphicsState(mpPathGraphicsState);
+        mpRenderContext->setGraphicsVars(mpPathProgramVars);
+
+        mpDebugDrawer->render(mpRenderContext.get(), mpEditorScene->getActiveCamera().get());
+    }
+
     void SceneEditor::rebuildLightIDMap()
     {
         mLightIDEditorToScene.clear();
@@ -633,7 +644,6 @@ namespace Falcor
         {
             const auto& pLight = mpScene->getLight(sceneLightID);
 
-            // #TODO Other light types?
             if (pLight->getType() == LightPoint)
             {
                 mLightIDEditorToScene[pointLightID] = sceneLightID;

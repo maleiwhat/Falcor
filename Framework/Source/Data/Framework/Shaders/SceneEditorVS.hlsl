@@ -26,17 +26,21 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
-#ifdef PATH_RENDERER
+#include "SceneEditorCommon.hlsli"
 
-#include "ShaderCommon.h"
-float4 main(float3 position : POSITION) : SV_POSITION
+#ifdef DEBUG_DRAW
+
+DEBUG_DRAW_VS_OUT main(DEBUG_DRAW_VS_IN vIn)
 {
-    return mul(gCam.viewProjMat, float4(position, 1));
+    DEBUG_DRAW_VS_OUT vOut;
+
+    vOut.position =  mul(gCam.viewProjMat, float4(vIn.position, 1));
+    vOut.color = vIn.color;
+
+    return vOut;
 }
 
-#else
-
-#include "SceneEditorCommon.hlsli"
+#else //////////////////////////////////////////////////////////////////////////////////////
 
 EDITOR_VS_OUT main(VS_IN vIn)
 {
