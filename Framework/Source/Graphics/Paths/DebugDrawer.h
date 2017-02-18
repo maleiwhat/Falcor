@@ -44,11 +44,15 @@ namespace Falcor
         using UniquePtr = std::unique_ptr<DebugDrawer>;
         using UniqueConstPtr = std::unique_ptr<const DebugDrawer>;
 
+        using Quad = std::array<glm::vec3, 4>;
+
         static UniquePtr create(uint32_t maxVertices = kMaxVertices);
 
         void setColor(const glm::vec3& color) { mCurrentColor = color; }
 
         void addLine(const glm::vec3& a, const glm::vec3& b);
+
+        void addQuad(const Quad& quad);
 
         void addPath(const ObjectPath::SharedPtr& pPath);
 

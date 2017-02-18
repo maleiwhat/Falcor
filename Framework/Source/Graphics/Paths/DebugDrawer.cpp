@@ -27,9 +27,9 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "Graphics/Paths/DebugDrawer.h"
-//#include "Data/VertexAttrib.h"
 #include "API/RenderContext.h"
 #include "Graphics/Camera/Camera.h"
+#include <array>
 
 namespace Falcor
 {
@@ -47,25 +47,107 @@ namespace Falcor
         }
     }
 
+    void DebugDrawer::addQuad(const Quad& quad)
+    {
+        addLine(quad[0], quad[1]);
+        addLine(quad[1], quad[2]);
+        addLine(quad[2], quad[3]);
+        addLine(quad[3], quad[0]);
+    }
+
+    DebugDrawer::Quad buildQuad(const glm::vec3& center, const glm::vec3& up, const glm::vec3& right)
+    {
+        // Length of each quad side
+        static const float size = 0.08f;
+
+        // Half widths based on size constant
+        glm::vec3 upOffset = glm::normalize(up) * size / 2.0f;
+        glm::vec3 rightOffset = glm::normalize(right) * size / 2.0f;
+
+        // CCW from top left
+        DebugDrawer::Quad quad;
+        quad[0] = center + upOffset - rightOffset; // Top left
+        quad[1] = center - upOffset - rightOffset; // Bottom left
+        quad[2] = center - upOffset + rightOffset; // Bottom right
+        quad[3] = center + upOffset + rightOffset; // Top right
+        return quad;
+    }
+
+    // Generates a quad centered at currFrame's position facing nextFrame's position
+    DebugDrawer::Quad createQuadForFrame(const ObjectPath::Frame& currFrame, const ObjectPath::Frame& nextFrame)
+    {
+        glm::vec3 forward = nextFrame.position - currFrame.position;
+        glm::vec3 right = glm::cross(forward, currFrame.up);
+        glm::vec3 up = glm::cross(right, forward);
+
+        return buildQuad(currFrame.position, up, right);
+    }
+
+    // Generates a quad centered at currFrame's position oriented halfway between direction to lastFrame and direction to nextFrame
+    DebugDrawer::Quad createQuadForFrame(const ObjectPath::Frame& lastFrame, const ObjectPath::Frame& currFrame, const ObjectPath::Frame& nextFrame)
+    {
+        glm::vec3 lastToCurrFoward = currFrame.position - lastFrame.position;
+        glm::vec3 lastToCurrRight = glm::normalize(glm::cross(lastToCurrFoward, lastFrame.up));
+        glm::vec3 lastToCurrUp = glm::normalize(glm::cross(lastToCurrRight, lastToCurrFoward));
+
+        glm::vec3 currToNextFoward = nextFrame.position - currFrame.position;
+        glm::vec3 currToNextRight = glm::normalize(glm::cross(currToNextFoward, currFrame.up));
+        glm::vec3 currToNextUp = glm::normalize(glm::cross(currToNextRight, currToNextFoward));
+
+        // Half vector between two direction normals
+        glm::vec3 midUp = (lastToCurrUp + currToNextUp) / 2.0f;
+        glm::vec3 midRight = (lastToCurrRight + currToNextRight) / 2.0f;
+
+        return buildQuad(currFrame.position, midUp, midRight);
+    }
+
     void DebugDrawer::addPath(const ObjectPath::SharedPtr& pPath)
     {
-        // Line segments connecting each keyframe
+        // # of line segments connecting each keyframe
         const uint32_t detail = 10;
+        const float step = 1.0f / (float)detail;
 
-        uint32_t vertexCount = 0;
-        for (uint32_t frameID = 0; frameID < pPath->getKeyFrameCount() - 1; frameID++)
+        ObjectPath::Frame lastFrame = pPath->getFrameAt(0, 0.0f);
+        ObjectPath::Frame currFrame = pPath->getFrameAt(0, step);
+
+        Quad lastQuad = createQuadForFrame(lastFrame, pPath->getFrameAt(0, step));
+        Quad currQuad;
+
+        // Draw quad to cap path beginning
+        addQuad(lastQuad);
+
+        for (float frame = step; frame < (float)(pPath->getKeyFrameCount() - 1) - step; frame += step)
         {
-            ObjectPath::Frame lastFrame = pPath->getFrameAt(frameID, 0.0f);
+            uint32_t frameID = (uint32_t)(glm::floor(frame));
+            float t = frame - (float)frameID;
 
-            for (uint_t i = 1; i <= detail; i++)
-            {
-                float t = (float)i / (float)detail;
-                ObjectPath::Frame currFrame = pPath->getFrameAt(frameID, t);
+            ObjectPath::Frame nextFrame = pPath->getFrameAt(frameID, t + step);
+            currQuad = createQuadForFrame(lastFrame, currFrame, nextFrame);
 
-                addLine(lastFrame.position, currFrame.position);
-                lastFrame = currFrame;
-            }
+            // Draw current quad
+            addQuad(currQuad);
+
+            // Connect last quad to current
+            addLine(lastQuad[0], currQuad[0]);
+            addLine(lastQuad[1], currQuad[1]);
+            addLine(lastQuad[2], currQuad[2]);
+            addLine(lastQuad[3], currQuad[3]);
+
+            lastFrame = currFrame;
+            lastQuad = currQuad;
+            currFrame = nextFrame;
         }
+
+        // Draw end cap based on direction from end to second-to-last segment
+        currQuad = createQuadForFrame(pPath->getKeyFrame(pPath->getKeyFrameCount() - 1), currFrame);
+
+        addQuad(currQuad);
+
+        // Because of direction the end-cap is generated in, currQuad is backwards
+        addLine(lastQuad[0], currQuad[3]);
+        addLine(lastQuad[1], currQuad[2]);
+        addLine(lastQuad[2], currQuad[1]);
+        addLine(lastQuad[3], currQuad[0]);
     }
 
     void DebugDrawer::render(RenderContext* pContext, Camera* pCamera)
