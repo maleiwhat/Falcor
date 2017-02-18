@@ -72,7 +72,7 @@ namespace Falcor
     {
         if(mpPath->getKeyFrameCount())
         {
-            if (pGui->addIntVar("Active Frame", mActiveFrame, 0, mpPath->getKeyFrameCount()))
+            if (pGui->addIntVar("Active Frame", mActiveFrame, 0, mpPath->getKeyFrameCount() - 1))
             {
                 setActiveFrameID(mActiveFrame);
             }
