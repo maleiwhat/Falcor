@@ -34,6 +34,7 @@ namespace Falcor
 {
     class RenderContext;
     class Camera;
+    struct BoundingBox;
 
     class DebugDrawer
     {
@@ -53,6 +54,8 @@ namespace Falcor
         void addLine(const glm::vec3& a, const glm::vec3& b);
 
         void addQuad(const Quad& quad);
+
+        void addBoundingBox(const BoundingBox& aabb);
 
         void addPath(const ObjectPath::SharedPtr& pPath);
 

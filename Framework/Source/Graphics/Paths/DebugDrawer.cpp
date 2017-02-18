@@ -29,6 +29,7 @@
 #include "Graphics/Paths/DebugDrawer.h"
 #include "API/RenderContext.h"
 #include "Graphics/Camera/Camera.h"
+#include "Utils/AABB.h"
 #include <array>
 
 namespace Falcor
@@ -53,6 +54,23 @@ namespace Falcor
         addLine(quad[1], quad[2]);
         addLine(quad[2], quad[3]);
         addLine(quad[3], quad[0]);
+    }
+
+    void DebugDrawer::addBoundingBox(const BoundingBox& aabb)
+    {
+        glm::vec3 min = aabb.center - aabb.extent;
+        glm::vec3 max = aabb.center + aabb.extent;
+
+        Quad bottomFace = { min, glm::vec3(max.x, min.y, min.z), glm::vec3(max.x, min.y, max.z), glm::vec3(min.x, min.y, max.z) };
+        addQuad(bottomFace);
+
+        Quad topFace = { glm::vec3(min.x, max.y, min.z), glm::vec3(max.x, max.y, min.z), max, glm::vec3(min.x, max.y, max.z) };
+        addQuad(topFace);
+
+        addLine(bottomFace[0], topFace[0]);
+        addLine(bottomFace[1], topFace[1]);
+        addLine(bottomFace[2], topFace[2]);
+        addLine(bottomFace[3], topFace[3]);
     }
 
     DebugDrawer::Quad buildQuad(const glm::vec3& center, const glm::vec3& up, const glm::vec3& right)
