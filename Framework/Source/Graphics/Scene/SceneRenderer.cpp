@@ -66,14 +66,23 @@ namespace Falcor
         if(sWorldMatOffset == ConstantBuffer::kInvalidOffset)
         {
             const auto pPerMeshCbData = pReflector->getBufferDesc(kPerStaticMeshCbName, ProgramReflection::BufferReflection::Type::Constant);
-            const auto pPerFrameCbData = pReflector->getBufferDesc(kPerFrameCbName, ProgramReflection::BufferReflection::Type::Constant);
-            assert(pPerMeshCbData);
-            assert(pPerFrameCbData);
 
-            sWorldMatOffset = pPerMeshCbData->getVariableData("gWorldMat[0]")->location;
-            sMeshIdOffset = pPerMeshCbData->getVariableData("gMeshId")->location;
-            sCameraDataOffset = pPerFrameCbData->getVariableData("gCam.viewMat")->location;
-            sDrawIDOffset = pPerMeshCbData->getVariableData("gDrawId[0]")->location;
+            if (pPerMeshCbData != nullptr)
+            {
+                sWorldMatOffset = pPerMeshCbData->getVariableData("gWorldMat[0]")->location;
+                sMeshIdOffset = pPerMeshCbData->getVariableData("gMeshId")->location;
+                sDrawIDOffset = pPerMeshCbData->getVariableData("gDrawId[0]")->location;
+            }
+        }
+
+        if (sCameraDataOffset == ConstantBuffer::kInvalidOffset)
+        {
+            const auto pPerFrameCbData = pReflector->getBufferDesc(kPerFrameCbName, ProgramReflection::BufferReflection::Type::Constant);
+
+            if (pPerFrameCbData != nullptr)
+            {
+                sCameraDataOffset = pPerFrameCbData->getVariableData("gCam.viewMat")->location;
+            }
         }
     }
 
