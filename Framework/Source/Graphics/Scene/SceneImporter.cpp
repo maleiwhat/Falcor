@@ -168,7 +168,9 @@ namespace Falcor
                 }
             }
 
-            mpScene->addModelInstance(pModel, name, translation, rotation, scaling);
+            auto pInstance = Scene::ModelInstance::create(pModel, translation, rotation, scaling, name);
+            mpScene->addModelInstance(pInstance);
+            mObjectMap.emplace(pInstance->getName(), pInstance);
         }
 
         return true;
@@ -675,7 +677,7 @@ namespace Falcor
                 }
                 pDirLight->setName(name);
             }
-            else if(key == SceneKeys::kLightType)
+            else if(key == SceneKeys::kType)
             {
                 // Don't care
             }
@@ -730,7 +732,7 @@ namespace Falcor
                 }
                 pPointLight->setName(name);
             }
-            else if(key == SceneKeys::kLightType)
+            else if(key == SceneKeys::kType)
             {
                 // Don't care
             }
@@ -792,6 +794,7 @@ namespace Falcor
             }
         }
         mpScene->addLight(pPointLight);
+        mObjectMap.emplace(pPointLight->getName(), pPointLight);
         return true;
     }
 
@@ -807,7 +810,7 @@ namespace Falcor
         for(uint32_t i = 0; i < jsonVal.Size(); i++)
         {
             const auto& light = jsonVal[i];
-            const auto& type = light.FindMember(SceneKeys::kLightType);
+            const auto& type = light.FindMember(SceneKeys::kType);
             if(type == light.MemberEnd())
             {
                 error("Light source must have a type.");
@@ -908,7 +911,7 @@ namespace Falcor
             {
                 if(value.IsString() == false)
                 {
-                    error("Camera path name should be a string");
+                    error("Path name should be a string");
                     return nullptr;
                 }
 
@@ -919,7 +922,7 @@ namespace Falcor
             {
                 if(value.IsBool() == false)
                 {
-                    error("Camera path loop should be a boolean value");
+                    error("Path loop should be a boolean value");
                     return nullptr;
                 }
 
@@ -931,6 +934,21 @@ namespace Falcor
                 if(createPathFrames(pPath.get(), value) == false)
                 {
                     return false;
+                }
+            }
+            else if (key == SceneKeys::kAttachedObjects)
+            {
+                if (value.IsArray() == false)
+                {
+                    error("Path object list should be an array");
+                    return nullptr;
+                }
+
+                for (uint32_t i = 0; i < value.Size(); i++)
+                {
+                    std::string name = value[i].FindMember(SceneKeys::kName)->value.GetString();
+                    assert(mObjectMap.count(name) > 0);
+                    pPath->attachObject(mObjectMap[name]);
                 }
             }
             else
@@ -967,6 +985,11 @@ namespace Falcor
         
     bool SceneImporter::parseActivePath(const rapidjson::Value& jsonVal)
     {
+        if (mpScene->getVersion() != 1)
+        {
+            return true;
+        }
+
         // Paths should already be initialized at this stage
         if(jsonVal.IsString() == false)
         {
@@ -976,12 +999,12 @@ namespace Falcor
 
         std::string activePath = jsonVal.GetString();
 
-        // Find the camera
+        // Find the path
         for(uint32_t i = 0; i < mpScene->getPathCount(); i++)
         {
             if(activePath == mpScene->getPath(i)->getName())
             {
-                mpScene->setActivePath(i);
+                mpScene->getPath(i)->attachObject(mpScene->getActiveCamera());
                 return true;
             }
         }
@@ -1076,6 +1099,7 @@ namespace Falcor
         }
 
         mpScene->addCamera(pCamera);
+        mObjectMap.emplace(pCamera->getName(), pCamera);
 
         return true;
     }

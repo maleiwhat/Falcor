@@ -42,16 +42,16 @@ namespace Falcor
 {
     namespace
     {
-        const char* kActiveModelStr = "Active Model";
+        const char* kActiveModelStr = "Selected Model";
         const char* kModelsStr = "Models";
-        const char* kActiveInstanceStr = "Active Instance";
+        const char* kActiveInstanceStr = "Selected Instance";
         const char* kActiveAnimationStr = "Active Animation";
         const char* kModelNameStr = "Model Name";
         const char* kInstanceStr = "Instance";
         const char* kCamerasStr = "Cameras";
         const char* kActiveCameraStr = "Active Camera";
         const char* kPathsStr = "Paths";
-        const char* kActivePathStr = "Active Path";
+        const char* kActivePathStr = "Selected Path";
     };
 
     const float SceneEditor::kCameraModelScale = 0.5f;
@@ -64,11 +64,15 @@ namespace Falcor
         { (int32_t)Gizmo::Type::Scale, "Scaling", true }
     };
 
-    Gui::DropdownList getPathDropdownList(const Scene* pScene)
+    Gui::DropdownList getPathDropdownList(const Scene* pScene, bool includeDefault)
     {
         Gui::DropdownList pathList;
-        static const Gui::DropdownValue kFreeMove{ (int)Scene::kFreeCameraMovement, "Free Movement" };
-        pathList.push_back(kFreeMove);
+        static const Gui::DropdownValue kFreeMove{ (int32_t)Scene::kFreeCameraMovement, "None" };
+
+        if (includeDefault)
+        {
+            pathList.push_back(kFreeMove);
+        }
 
         for (uint32_t i = 0; i < pScene->getPathCount(); i++)
         {
@@ -157,21 +161,21 @@ namespace Falcor
         }
     }
 
-    void SceneEditor::selectActivePath(Gui* pGui)
+    void SceneEditor::selectPath(Gui* pGui)
     {
-        if (mPathEditor.pEditor == nullptr)
+        if (mPathEditor == nullptr)
         {
-            uint32_t activePath = mpScene->getActivePathIndex();
-            Gui::DropdownList pathList = getPathDropdownList(mpScene.get());
+            uint32_t activePath = mSelectedPath;
+            Gui::DropdownList pathList = getPathDropdownList(mpScene.get(), false);
             if (pGui->addDropdown(kActivePathStr, pathList, activePath))
             {
-                mpScene->setActivePath(activePath);
+                mSelectedPath = activePath;
                 mSceneDirty = true;
             }
         }
         else
         {
-            std::string msg = kActivePathStr + std::string(": ") + mpScene->getPath(mPathEditor.ActivePath)->getName();
+            std::string msg = kActivePathStr + std::string(": ") + mpScene->getPath(mSelectedPath)->getName();
             pGui->addText(msg.c_str());
         }
     }
@@ -191,9 +195,9 @@ namespace Falcor
         if (pGui->addDropdown(kActiveCameraStr, cameraList, camIndex))
         {
             mpScene->setActiveCamera(camIndex);
-            if (mPathEditor.pEditor)
+            if (mPathEditor)
             {
-                mPathEditor.pEditor->setCamera(mpScene->getActiveCamera());
+                mPathEditor->setCamera(mpScene->getActiveCamera());
             }
             mSceneDirty = true;
         }
@@ -350,8 +354,7 @@ namespace Falcor
 
     void SceneEditor::pathEditorFinishedCB()
     {
-        mPathEditor.pEditor = nullptr;
-        mpScene->setActivePath(mPathEditor.ActivePath);
+        mPathEditor = nullptr;
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -579,7 +582,7 @@ namespace Falcor
         // Paths
         //
 
-        if (mPathEditor.pEditor != nullptr)
+        if (mPathEditor != nullptr)
         {
             renderPath();
         }
@@ -624,10 +627,10 @@ namespace Falcor
 
     void SceneEditor::renderPath()
     {
-        assert(mPathEditor.pEditor != nullptr);
+        assert(mPathEditor != nullptr);
 
         mpDebugDrawer->setColor(glm::vec3(0.25f, 1.0f, 0.63f));
-        mpDebugDrawer->addPath(mPathEditor.pEditor->getPath());
+        mpDebugDrawer->addPath(mPathEditor->getPath());
 
         mpPathGraphicsState->setFbo(mpRenderContext->getGraphicsState()->getFbo());
         mpRenderContext->setGraphicsState(mpPathGraphicsState);
@@ -867,7 +870,7 @@ namespace Falcor
         if (pGui->beginGroup(kPathsStr))
         {
             addPath(pGui);
-            selectActivePath(pGui);
+            selectPath(pGui);
             startPathEditor(pGui);
             deletePath(pGui);
             pGui->endGroup();
@@ -951,9 +954,9 @@ namespace Falcor
 
         pGui->popWindow();
 
-        if (mPathEditor.pEditor)
+        if (mPathEditor)
         {
-            mPathEditor.pEditor->render(pGui);
+            mPathEditor->render(pGui);
         }
     }
 
@@ -1231,12 +1234,11 @@ namespace Falcor
 
     void SceneEditor::addPath(Gui* pGui)
     {
-        if (mPathEditor.pEditor == nullptr && pGui->addButton("Add Path"))
+        if (mPathEditor == nullptr && pGui->addButton("Add Path"))
         {
             auto pPath = ObjectPath::create();
             pPath->setName("Path " + std::to_string(mpScene->getPathCount()));
-            uint32_t pathIndex = mpScene->addPath(pPath);
-            mpScene->setActivePath(pathIndex);
+            mSelectedPath = mpScene->addPath(pPath);
 
             startPathEditor();
             mSceneDirty = true;
@@ -1245,37 +1247,35 @@ namespace Falcor
 
     void SceneEditor::deletePath(Gui* pGui)
     {
-        uint32_t pathID = mpScene->getActivePathIndex();
-        if (mPathEditor.pEditor || pathID == Scene::kFreeCameraMovement)
+        if (mPathEditor)
         {
-            // Can't delete a path while the path editor is opened or if it's a free movement. Please finish editing and try again
+            // Can't delete a path while the path editor is opened
             return;
         }
 
         if (pGui->addButton("Delete Path"))
         {
-            mpScene->deletePath(mpScene->getActivePathIndex());
+            mpScene->deletePath(mSelectedPath);
+
+            if (mSelectedPath == mpScene->getPathCount())
+            {
+                mSelectedPath = mpScene->getPathCount() - 1;
+            }
+
             mSceneDirty = true;
         }
     }
 
     void SceneEditor::startPathEditor()
     {
-        mPathEditor.pEditor = PathEditor::create(mpScene->getActivePath(), mpScene->getActiveCamera(), [this]() {pathEditorFinishedCB(); });
+        mPathEditor = PathEditor::create(mpScene->getPath(mSelectedPath), mpScene->getActiveCamera(), [this]() {pathEditorFinishedCB(); });
         mSceneDirty = true;
-        mpScene->setActivePath(Scene::kFreeCameraMovement);
     }
 
     void SceneEditor::startPathEditor(Gui* pGui)
     {
-        if (mPathEditor.pEditor == nullptr)
+        if (mPathEditor == nullptr)
         {
-            mPathEditor.ActivePath = mpScene->getActivePathIndex();
-            if (mPathEditor.ActivePath == Scene::kFreeCameraMovement)
-            {
-                // Free movement is not a path. Can't edit it
-                return;
-            }
             if (pGui->addButton("Edit Path"))
             {
                 startPathEditor();

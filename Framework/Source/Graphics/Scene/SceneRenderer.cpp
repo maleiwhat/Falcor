@@ -262,8 +262,9 @@ namespace Falcor
 
     bool SceneRenderer::update(double currentTime)
     {
-        return mpScene->updateCamera(currentTime, mpCameraController.get());
+        return mpScene->update(currentTime, mpCameraController.get());
 
+        // #TODO ????
         for(uint32_t modelID = 0; modelID < mpScene->getModelCount(); modelID++)
         {
             mpScene->getModel(modelID)->animate(currentTime);

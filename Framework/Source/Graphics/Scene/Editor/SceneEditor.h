@@ -108,7 +108,7 @@ namespace Falcor
         // Paths
         void pathEditorFinishedCB();
         void addPath(Gui* pGui);
-        void selectActivePath(Gui* pGui);
+        void selectPath(Gui* pGui);
         void deletePath(Gui* pGui);
         void startPathEditor(Gui* pGui);
         void startPathEditor();
@@ -181,6 +181,7 @@ namespace Falcor
         int32_t mSelectedModelInstance = 0;
         uint32_t mSelectedCamera = 0;
         uint32_t mSelectedLight = 0;
+        uint32_t mSelectedPath = 0;
 
         Picking::UniquePtr mpScenePicker;
 
@@ -238,11 +239,7 @@ namespace Falcor
 
         void renderPath();
 
-        struct
-        {
-            uint32_t ActivePath = 0;
-            PathEditor::UniquePtr pEditor;
-        } mPathEditor;
+        PathEditor::UniquePtr mPathEditor;
 
         DebugDrawer::UniquePtr mpDebugDrawer;
 

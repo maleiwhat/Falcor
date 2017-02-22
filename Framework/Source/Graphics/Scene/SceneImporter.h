@@ -96,6 +96,8 @@ namespace Falcor
         uint32_t mModelLoadFlags = 0;
         uint32_t mSceneLoadFlags = 0;
 
+        std::map<std::string, IMovableObject::SharedPtr> mObjectMap;
+
         struct FuncValue
         {
             const std::string token;
