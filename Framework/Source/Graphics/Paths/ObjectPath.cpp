@@ -125,7 +125,7 @@ namespace Falcor
                 if(animTime >= curKey.time && animTime < nextKey.time)
                 {
                     // Found the animation keys. Interpolate
-                    float t = getInterpolationFactor(i, currentTime);
+                    float t = getInterpolationFactor(i, animTime);
                     mCurrentFrame = getFrameAt(i, t);
                     foundFrame = true;
                     break;

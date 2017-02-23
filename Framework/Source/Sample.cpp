@@ -239,7 +239,24 @@ namespace Falcor
         {
             mpGui->addFloatVar("Time", mCurrentTime, 0, FLT_MAX);
             mpGui->addFloatVar("Time Scale", mTimeScale, 0, FLT_MAX);
-            mpGui->addCheckBox("Freeze Time", mFreezeTime);
+            //mpGui->addCheckBox("Freeze Time", mFreezeTime);
+
+            if (mpGui->addButton("Reset"))
+            {
+                mCurrentTime = 0.0f;
+            }
+
+            if (mpGui->addButton(mFreezeTime ? "Play" : "Pause", true))
+            {
+                mFreezeTime = !mFreezeTime;
+            }
+
+            if (mpGui->addButton("Stop", true))
+            {
+                mFreezeTime = true;
+                mCurrentTime = 0.0f;
+            }
+
             mCaptureScreen = mpGui->addButton("Screen Capture");
             if (mpGui->addButton("Video Capture", true))
             {
