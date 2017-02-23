@@ -1356,6 +1356,12 @@ namespace Falcor
             {
                 pOldPath->detachObject(pMovable);
                 mObjToPathMap.erase(pMovable.get());
+
+                // #HACK Find a way to work with base/movable matrices on object instances. Cameras and Lights don't do this...
+                if (std::dynamic_pointer_cast<Scene::ModelInstance>(pMovable) != nullptr)
+                {
+                    pMovable->move(glm::vec3(), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+                }
             }
 
             // Attach to new path
