@@ -42,6 +42,7 @@ namespace Falcor
 {
     namespace
     {
+        // #TODO Update variable names and strings
         const char* kActiveModelStr = "Selected Model";
         const char* kModelsStr = "Models";
         const char* kActiveInstanceStr = "Selected Instance";
@@ -67,11 +68,11 @@ namespace Falcor
     Gui::DropdownList getPathDropdownList(const Scene* pScene, bool includeDefault)
     {
         Gui::DropdownList pathList;
-        static const Gui::DropdownValue kFreeMove{ (int32_t)Scene::kFreeCameraMovement, "None" };
+        static const Gui::DropdownValue kNoPathValue{ (int32_t)Scene::kNoPath, "None" };
 
         if (includeDefault)
         {
-            pathList.push_back(kFreeMove);
+            pathList.push_back(kNoPathValue);
         }
 
         for (uint32_t i = 0; i < pScene->getPathCount(); i++)
@@ -535,6 +536,19 @@ namespace Falcor
                 mInstanceEulerRotations[modelID].push_back(mpScene->getModelInstance(modelID, instanceID)->getEulerRotation());
             }
         }
+
+        //
+        // Path Attachments
+        //
+
+        for (uint32_t pathID = 0; pathID < mpScene->getPathCount(); pathID++)
+        {
+            const auto& pPath = mpScene->getPath(pathID);
+            for (uint32_t i = 0; i < pPath->getAttachedObjectCount(); i++)
+            {
+                mObjToPathMap[pPath->getAttachedObject(i).get()] = pPath;
+            }
+        }
     }
 
     const glm::vec3& SceneEditor::getActiveInstanceEulerRotation()
@@ -845,6 +859,7 @@ namespace Falcor
                     setInstanceTranslation(pGui);
                     setInstanceRotation(pGui);
                     setInstanceScaling(pGui);
+                    setPath(pGui, mpScene->getModelInstance(mSelectedModel, mSelectedModelInstance));
 
                     pGui->endGroup();
                 }
@@ -894,6 +909,8 @@ namespace Falcor
             setCameraTarget(pGui);
             setCameraUp(pGui);
 
+            setPath(pGui, mpScene->getActiveCamera());
+
             pGui->endGroup();
         }
     }
@@ -914,7 +931,13 @@ namespace Falcor
                 }
                 if (pGui->beginGroup(name.c_str()))
                 {
-                    mpScene->getLight(i)->setUiElements(pGui);
+                    const auto& pLight = mpScene->getLight(i);
+                    pLight->setUiElements(pGui);
+
+                    if (pLight->getType() == LightPoint)
+                    {
+                        setPath(pGui, pLight);
+                    }
 
                     if (pGui->addButton("Remove"))
                     {
@@ -1255,6 +1278,12 @@ namespace Falcor
 
         if (pGui->addButton("Delete Path"))
         {
+            auto& pPath = mpScene->getPath(mSelectedPath);
+            for (uint32_t i = 0; i < pPath->getAttachedObjectCount(); i++)
+            {
+                mObjToPathMap.erase(pPath->getAttachedObject(i).get());
+            }
+
             mpScene->deletePath(mSelectedPath);
 
             if (mSelectedPath == mpScene->getPathCount())
@@ -1282,4 +1311,48 @@ namespace Falcor
             }
         }
     }
+
+    void SceneEditor::setPath(Gui* pGui, const IMovableObject::SharedPtr& pMovable)
+    {
+        // Find what path this pMovable is set to, if any
+        ObjectPath::SharedPtr oldPath;
+        uint32_t oldPathID = Scene::kNoPath;
+
+        auto it = mObjToPathMap.find(pMovable.get());
+        if (it != mObjToPathMap.end())
+        {
+            oldPath = it->second;
+        }
+
+        // Find path ID
+        if (oldPath != nullptr)
+        {
+            for (uint32_t i = 0; i < mpScene->getPathCount(); i++)
+            {
+                if (mpScene->getPath(i) == oldPath)
+                {
+                    oldPathID = i;
+                }
+            }
+        }
+
+        uint32_t newPathID = oldPathID;
+        if (pGui->addDropdown(kActivePathStr, getPathDropdownList(mpScene.get(), true), newPathID))
+        {
+            // Detach from old path
+            if (oldPathID != Scene::kNoPath)
+            {
+                oldPath->detachObject(pMovable);
+                mObjToPathMap.erase(pMovable.get());
+            }
+
+            // Attach to new path
+            if (newPathID != Scene::kNoPath)
+            {
+                mpScene->getPath(newPathID)->attachObject(pMovable);
+            }
+
+        }
+    }
+
 }

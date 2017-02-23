@@ -112,6 +112,7 @@ namespace Falcor
         void deletePath(Gui* pGui);
         void startPathEditor(Gui* pGui);
         void startPathEditor();
+        void setPath(Gui* pGui, const IMovableObject::SharedPtr& pMovable);
 
         // Global functions
         void setAmbientIntensity(Gui* pGui);
@@ -240,6 +241,7 @@ namespace Falcor
         void renderPath();
 
         PathEditor::UniquePtr mPathEditor;
+        std::unordered_map<const IMovableObject*, ObjectPath::SharedPtr> mObjToPathMap;
 
         DebugDrawer::UniquePtr mpDebugDrawer;
 

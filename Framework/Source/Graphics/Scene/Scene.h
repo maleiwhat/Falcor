@@ -123,7 +123,7 @@ namespace Falcor
         uint32_t addLight(const Light::SharedPtr& pLight);
         void deleteLight(uint32_t lightID);
         uint32_t getLightCount() const { return (uint32_t)mpLights.size(); }
-        Light::SharedPtr getLight(uint32_t index) const { return mpLights[index]; }
+        const Light::SharedPtr& getLight(uint32_t index) const { return mpLights[index]; }
         const std::vector<Light::SharedPtr>& getLights() const { return mpLights; }
 
         void setAmbientIntensity(const glm::vec3& ambientIntensity) { mAmbientIntensity = ambientIntensity; }
@@ -173,7 +173,7 @@ namespace Falcor
 
         const uint32_t getId() const { return mId; }
 
-        static const uint32_t kFreeCameraMovement = (uint32_t)-1;
+        static const uint32_t kNoPath = (uint32_t)-1;
 
         void merge(const Scene* pFrom);
 
