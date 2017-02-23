@@ -581,8 +581,6 @@ namespace Falcor
 
             mpRenderContext->setGraphicsVars(mpColorProgramVars);
             mpSelectionSceneRenderer->renderScene(mpRenderContext.get(), pCamera);
-
-            mpDebugDrawer->addBoundingBox(mpSelectionScene->getModelInstance(0, 0)->getBoundingBox());
         }
 
         //
