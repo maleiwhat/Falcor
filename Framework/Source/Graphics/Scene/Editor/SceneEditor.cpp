@@ -594,7 +594,7 @@ namespace Falcor
         // Paths
         //
 
-        if (mPathEditor != nullptr)
+        if (mPathEditor != nullptr || mRenderAllPaths)
         {
             renderPath();
         }
@@ -639,10 +639,19 @@ namespace Falcor
 
     void SceneEditor::renderPath()
     {
-        assert(mPathEditor != nullptr);
-
         mpDebugDrawer->setColor(glm::vec3(0.25f, 1.0f, 0.63f));
-        mpDebugDrawer->addPath(mPathEditor->getPath());
+
+        if (mRenderAllPaths)
+        {
+            for (uint32_t i = 0; i < mpScene->getPathCount(); i++)
+            {
+                mpDebugDrawer->addPath(mpScene->getPath(i));
+            }
+        }
+        else
+        {
+            mpDebugDrawer->addPath(mPathEditor->getPath());
+        }
 
         mpPathGraphicsState->setFbo(mpRenderContext->getGraphicsState()->getFbo());
         mpRenderContext->setGraphicsState(mpPathGraphicsState);
@@ -857,7 +866,7 @@ namespace Falcor
                     setInstanceTranslation(pGui);
                     setInstanceRotation(pGui);
                     setInstanceScaling(pGui);
-                    setPath(pGui, mpScene->getModelInstance(mSelectedModel, mSelectedModelInstance));
+                    setObjectPath(pGui, mpScene->getModelInstance(mSelectedModel, mSelectedModelInstance), "ModelInstance");
 
                     pGui->endGroup();
                 }
@@ -882,10 +891,12 @@ namespace Falcor
     {
         if (pGui->beginGroup(kPathsStr))
         {
-            addPath(pGui);
             selectPath(pGui);
+            // #TODO maybe add sameLine args to these helper functions instead of just changing the gui calls inside
+            addPath(pGui);
             startPathEditor(pGui);
             deletePath(pGui);
+            pGui->addCheckBox("Render All Paths", mRenderAllPaths);
             pGui->endGroup();
         }
     }
@@ -907,7 +918,7 @@ namespace Falcor
             setCameraTarget(pGui);
             setCameraUp(pGui);
 
-            setPath(pGui, mpScene->getActiveCamera());
+            setObjectPath(pGui, mpScene->getActiveCamera(), "Camera");
 
             pGui->endGroup();
         }
@@ -934,7 +945,7 @@ namespace Falcor
 
                     if (pLight->getType() == LightPoint)
                     {
-                        setPath(pGui, pLight);
+                        setObjectPath(pGui, pLight, "PointLight");
                     }
 
                     if (pGui->addButton("Remove"))
@@ -1274,7 +1285,7 @@ namespace Falcor
             return;
         }
 
-        if (pGui->addButton("Delete Path"))
+        if (pGui->addButton("Delete Path", true))
         {
             auto& pPath = mpScene->getPath(mSelectedPath);
             for (uint32_t i = 0; i < pPath->getAttachedObjectCount(); i++)
@@ -1303,51 +1314,56 @@ namespace Falcor
     {
         if (mPathEditor == nullptr)
         {
-            if (pGui->addButton("Edit Path"))
+            if (pGui->addButton("Edit Path", true))
             {
                 startPathEditor();
             }
         }
     }
 
-    void SceneEditor::setPath(Gui* pGui, const IMovableObject::SharedPtr& pMovable)
+    void SceneEditor::setObjectPath(Gui* pGui, const IMovableObject::SharedPtr& pMovable, const std::string& objType)
     {
         // Find what path this pMovable is set to, if any
-        ObjectPath::SharedPtr oldPath;
+        ObjectPath::SharedPtr pOldPath;
         uint32_t oldPathID = Scene::kNoPath;
 
         auto it = mObjToPathMap.find(pMovable.get());
         if (it != mObjToPathMap.end())
         {
-            oldPath = it->second;
+            pOldPath = it->second;
         }
 
         // Find path ID
-        if (oldPath != nullptr)
+        if (pOldPath != nullptr)
         {
             for (uint32_t i = 0; i < mpScene->getPathCount(); i++)
             {
-                if (mpScene->getPath(i) == oldPath)
+                if (mpScene->getPath(i) == pOldPath)
                 {
                     oldPathID = i;
                 }
             }
         }
 
+        // Append tag to avoid hash collisions in imgui. ##Tag does not appear when rendered
+        std::string label = std::string(kActivePathStr) + "##" + objType;
+
         uint32_t newPathID = oldPathID;
-        if (pGui->addDropdown(kActivePathStr, getPathDropdownList(mpScene.get(), true), newPathID))
+        if (pGui->addDropdown(label.c_str(), getPathDropdownList(mpScene.get(), true), newPathID))
         {
             // Detach from old path
             if (oldPathID != Scene::kNoPath)
             {
-                oldPath->detachObject(pMovable);
+                pOldPath->detachObject(pMovable);
                 mObjToPathMap.erase(pMovable.get());
             }
 
             // Attach to new path
             if (newPathID != Scene::kNoPath)
             {
-                mpScene->getPath(newPathID)->attachObject(pMovable);
+                const auto& pNewPath = mpScene->getPath(newPathID);
+                pNewPath->attachObject(pMovable);
+                mObjToPathMap[pMovable.get()] = pNewPath;
             }
 
         }
