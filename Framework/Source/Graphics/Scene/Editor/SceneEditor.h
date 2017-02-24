@@ -144,8 +144,10 @@ namespace Falcor
         //
         // Editor Objects
         //
+
         static const float kCameraModelScale;
         static const float kLightModelScale;
+        static const float kKeyframeModelScale;
 
         // Update transform of gizmos and camera models
         void updateEditorObjectTransforms();
@@ -165,7 +167,8 @@ namespace Falcor
             None,
             Model,
             Camera,
-            Light
+            Light,
+            Keyframe
         };
 
         //
@@ -226,9 +229,11 @@ namespace Falcor
 
         Model::SharedPtr mpCameraModel;
         Model::SharedPtr mpLightModel;
+        Model::SharedPtr mpKeyframeModel;
 
         uint32_t mEditorCameraModelID = (uint32_t)-1;
         uint32_t mEditorLightModelID = (uint32_t)-1;
+        uint32_t mEditorKeyframeModelID = (uint32_t)-1; // #TODO do we need this?
 
         // Maps between light models and master scene light ID
         std::unordered_map<uint32_t, uint32_t> mLightIDEditorToScene;
@@ -242,7 +247,7 @@ namespace Falcor
 
         bool mRenderAllPaths = false;
 
-        PathEditor::UniquePtr mPathEditor;
+        PathEditor::UniquePtr mpPathEditor;
         std::unordered_map<const IMovableObject*, ObjectPath::SharedPtr> mObjToPathMap;
 
         DebugDrawer::UniquePtr mpDebugDrawer;

@@ -48,24 +48,24 @@ namespace Falcor
 
     void PathEditor::editCameraProperties(Gui* pGui)
     {
-        // Camera position
-        vec3 p = mpCamera->getPosition();
-        vec3 t = mpCamera->getTarget();
-        vec3 u = mpCamera->getUpVector();
-        if (pGui->addFloat3Var("Camera Position", p, -FLT_MAX, FLT_MAX))
-        {
-            mpCamera->setPosition(p);
-        }
+        //// Camera position
+        //vec3 p = mpCamera->getPosition();
+        //vec3 t = mpCamera->getTarget();
+        //vec3 u = mpCamera->getUpVector();
+        //if (pGui->addFloat3Var("Camera Position", p, -FLT_MAX, FLT_MAX))
+        //{
+        //    mpCamera->setPosition(p);
+        //}
 
-        if (pGui->addFloat3Var("Camera Target", t, -FLT_MAX, FLT_MAX))
-        {
-            mpCamera->setTarget(t);
-        }
+        //if (pGui->addFloat3Var("Camera Target", t, -FLT_MAX, FLT_MAX))
+        //{
+        //    mpCamera->setTarget(t);
+        //}
 
-        if (pGui->addFloat3Var("Camera Up", u, -FLT_MAX, FLT_MAX))
-        {
-            mpCamera->setUpVector(u);
-        }
+        //if (pGui->addFloat3Var("Camera Up", u, -FLT_MAX, FLT_MAX))
+        //{
+        //    mpCamera->setUpVector(u);
+        //}
     }
 
     void PathEditor::editActiveFrameID(Gui* pGui)
@@ -82,11 +82,11 @@ namespace Falcor
     void PathEditor::setActiveFrameID(uint32_t id)
     {
         mActiveFrame = id;
-        const auto& frame = mpPath->getKeyFrame(mActiveFrame);
-        mpCamera->setUpVector(frame.up);
-        mpCamera->setTarget(frame.target);
-        mpCamera->setPosition(frame.position);
-        mFrameTime = frame.time;
+        //const auto& frame = mpPath->getKeyFrame(mActiveFrame);
+        //mpCamera->setUpVector(frame.up);
+        //mpCamera->setTarget(frame.target);
+        //mpCamera->setPosition(frame.position);
+        //mFrameTime = frame.time;
     }
     
     void PathEditor::editPathLoop(Gui* pGui)
@@ -108,13 +108,14 @@ namespace Falcor
         }
     }
 
-    PathEditor::UniquePtr PathEditor::create(const ObjectPath::SharedPtr& pPath, const Camera::SharedPtr& pCamera, pfnEditComplete editCompleteCB)
+    PathEditor::UniquePtr PathEditor::create(const ObjectPath::SharedPtr& pPath, pfnEditComplete editCompleteCB)
     {
-        return UniquePtr(new PathEditor(pPath, pCamera, editCompleteCB));
+        return UniquePtr(new PathEditor(pPath, editCompleteCB));
     }
 
-    PathEditor::PathEditor(const ObjectPath::SharedPtr& pPath, const Camera::SharedPtr& pCamera, pfnEditComplete editCompleteCB) : 
-        mEditCompleteCB(editCompleteCB), mpPath(pPath), mpCamera(pCamera)
+    PathEditor::PathEditor(const ObjectPath::SharedPtr& pPath, pfnEditComplete editCompleteCB)
+        : mEditCompleteCB(editCompleteCB)
+        , mpPath(pPath)
     {
         if(mpPath->getKeyFrameCount())
         {
@@ -124,15 +125,6 @@ namespace Falcor
 
     PathEditor::~PathEditor()
     {
-    }
-
-    void PathEditor::setCamera(const Camera::SharedPtr& pCamera)
-    {
-        mpCamera = pCamera;
-        const auto& Frame = mpPath->getKeyFrame(mActiveFrame);
-        mpCamera->setUpVector(Frame.up);
-        mpCamera->setTarget(Frame.target);
-        mpCamera->setPosition(Frame.position);
     }
 
     void PathEditor::render(Gui* pGui)
@@ -163,41 +155,41 @@ namespace Falcor
 
     void PathEditor::addFrame(Gui* pGui)
     {
-        if(pGui->addButton("Add Frame"))
-        {
-            const auto& pos = mpCamera->getPosition();
-            const auto& target = mpCamera->getTarget();
-            const auto& up = mpCamera->getUpVector();
-            mActiveFrame = mpPath->addKeyFrame(mFrameTime, pos, target, up);
-            setActiveFrameID(mActiveFrame);
-        }
+        //if(pGui->addButton("Add Frame"))
+        //{
+        //    const auto& pos = mpCamera->getPosition();
+        //    const auto& target = mpCamera->getTarget();
+        //    const auto& up = mpCamera->getUpVector();
+        //    mActiveFrame = mpPath->addKeyFrame(mFrameTime, pos, target, up);
+        //    setActiveFrameID(mActiveFrame);
+        //}
     }
 
     void PathEditor::deleteFrame(Gui* pGui)
     {
-        if(mpPath->getKeyFrameCount() && pGui->addButton("Remove Frame"))
-        {
-            mpPath->removeKeyFrame(mActiveFrame);
-            mActiveFrame = min(mpPath->getKeyFrameCount() - 1, (uint32_t)mActiveFrame);
-            if (mpPath->getKeyFrameCount())
-            {
-                setActiveFrameID(mActiveFrame);
-            }
-        }
+        //if(mpPath->getKeyFrameCount() && pGui->addButton("Remove Frame"))
+        //{
+        //    mpPath->removeKeyFrame(mActiveFrame);
+        //    mActiveFrame = min(mpPath->getKeyFrameCount() - 1, (uint32_t)mActiveFrame);
+        //    if (mpPath->getKeyFrameCount())
+        //    {
+        //        setActiveFrameID(mActiveFrame);
+        //    }
+        //}
     }
 
     void PathEditor::updateFrame(Gui* pGui)
     {
-        if (mpPath->getKeyFrameCount() && pGui->addButton("Update Current Frame"))
-        {
-            const auto& pos = mpCamera->getPosition();
-            const auto& target = mpCamera->getTarget();
-            const auto& up = mpCamera->getUpVector();
-            mpPath->setFramePosition(mActiveFrame, pos);
-            mpPath->setFrameTarget(mActiveFrame, target);
-            mpPath->setFrameUp(mActiveFrame, up);
-            mActiveFrame = mpPath->setFrameTime(mActiveFrame, mFrameTime);
-            setActiveFrameID(mActiveFrame);
-        }
+        //if (mpPath->getKeyFrameCount() && pGui->addButton("Update Current Frame"))
+        //{
+        //    const auto& pos = mpCamera->getPosition();
+        //    const auto& target = mpCamera->getTarget();
+        //    const auto& up = mpCamera->getUpVector();
+        //    mpPath->setFramePosition(mActiveFrame, pos);
+        //    mpPath->setFrameTarget(mActiveFrame, target);
+        //    mpPath->setFrameUp(mActiveFrame, up);
+        //    mActiveFrame = mpPath->setFrameTime(mActiveFrame, mFrameTime);
+        //    setActiveFrameID(mActiveFrame);
+        //}
     }
 }

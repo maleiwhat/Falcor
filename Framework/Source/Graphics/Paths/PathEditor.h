@@ -29,6 +29,7 @@
 #include "Utils/Gui.h"
 #include "Graphics/Paths/ObjectPath.h"
 #include "Graphics/Camera/Camera.h"
+#include "Graphics/Scene/Scene.h"
 
 namespace Falcor
 {
@@ -39,16 +40,18 @@ namespace Falcor
         using UniquePtr = std::unique_ptr<PathEditor>;
         using UniqueConstPtr = std::unique_ptr<const PathEditor>;
 
-        static UniquePtr create(const ObjectPath::SharedPtr& pPath, const Camera::SharedPtr& pCamera, pfnEditComplete editCompleteCB);
+        static UniquePtr create(const ObjectPath::SharedPtr& pPath, pfnEditComplete editCompleteCB);
         ~PathEditor();
 
         void render(Gui* pGui);
-        void setCamera(const Camera::SharedPtr& pCamera);
+
+        void setActiveFrame(uint32_t frameID) { mActiveFrame = frameID; };
+        uint32_t getActiveFrame() const { return mActiveFrame; }
 
         const ObjectPath::SharedPtr& getPath() const { return mpPath; }
 
     private:
-        PathEditor(const ObjectPath::SharedPtr& pPath, const Camera::SharedPtr& pCamera, pfnEditComplete editCompleteCB);
+        PathEditor(const ObjectPath::SharedPtr& pPath, pfnEditComplete editCompleteCB);
 
         bool closeEditor(Gui* pGui);
         void editPathName(Gui* pGui);
@@ -63,7 +66,7 @@ namespace Falcor
         void setActiveFrameID(uint32_t id);
 
         ObjectPath::SharedPtr mpPath;
-        Camera::SharedPtr mpCamera;
+
         pfnEditComplete mEditCompleteCB = nullptr;
 
         int32_t mActiveFrame = 0;

@@ -83,9 +83,9 @@ namespace Falcor
         uint32_t getKeyFrameCount() const {return (uint32_t)mKeyFrames.size();}
         const Frame& getKeyFrame(uint32_t frameID) const { return mKeyFrames[frameID]; }
 
-        void setFramePosition(uint32_t frameID, const glm::vec3& pos) { mKeyFrames[frameID].position = pos; }
-        void setFrameTarget(uint32_t frameID, const glm::vec3& target) { mKeyFrames[frameID].target = target; }
-        void setFrameUp(uint32_t frameID, const glm::vec3& up) { mKeyFrames[frameID].up = up; }
+        void setFramePosition(uint32_t frameID, const glm::vec3& pos) { mDirty = true; mKeyFrames[frameID].position = pos; }
+        void setFrameTarget(uint32_t frameID, const glm::vec3& target) { mDirty = true; mKeyFrames[frameID].target = target; }
+        void setFrameUp(uint32_t frameID, const glm::vec3& up) { mDirty = true; mKeyFrames[frameID].up = up; }
         uint32_t setFrameTime(uint32_t frameID, float time);
 
         Frame getFrameAt(uint32_t frameID, float t);
