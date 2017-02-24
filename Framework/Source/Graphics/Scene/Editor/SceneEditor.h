@@ -106,7 +106,6 @@ namespace Falcor
         void addDirectionalLight(Gui* pGui);
 
         // Paths
-        void pathEditorFinishedCB();
         void addPath(Gui* pGui);
         void selectPath(Gui* pGui);
         void deletePath(Gui* pGui);
@@ -244,6 +243,13 @@ namespace Falcor
         //
 
         void renderPath();
+
+        void addSelectedPathKeyframeModels();
+        void removeSelectedPathKeyframeModels();
+
+        void pathEditorFinishedCB();
+        void pathEditorFrameChangedCB();
+        void pathEditorFrameAddRemoveCB();
 
         bool mRenderAllPaths = false;
 

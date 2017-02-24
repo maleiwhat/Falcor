@@ -121,6 +121,11 @@ namespace Falcor
 
     void DebugDrawer::addPath(const ObjectPath::SharedPtr& pPath)
     {
+        if (pPath->getKeyFrameCount() <= 1)
+        {
+            return;
+        }
+
         // # of line segments connecting each keyframe
         const uint32_t detail = 10;
         const float step = 1.0f / (float)detail;

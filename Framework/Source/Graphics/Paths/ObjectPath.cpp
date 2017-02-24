@@ -142,16 +142,16 @@ namespace Falcor
 
     ObjectPath::Frame ObjectPath::getFrameAt(uint32_t frameID, float t)
     {
-        switch (mMode)
+        if (mMode == Interpolation::Linear || mKeyFrames.size() < 3)
         {
-        case Interpolation::Linear:
             return linearInterpolation(frameID, t);
-        case Interpolation::CubicSpline:
+        }
+        else
+        {
             return cubicSplineInterpolation(frameID, t);
-        default:
-            should_not_get_here();
         }
 
+        should_not_get_here();
         return Frame();
     }
 
@@ -235,6 +235,7 @@ namespace Falcor
     void ObjectPath::removeKeyFrame(uint32_t frameID)
     {
         mKeyFrames.erase(mKeyFrames.begin() + frameID);
+        mDirty = true;
     }
 
     uint32_t ObjectPath::setFrameTime(uint32_t frameID, float time)

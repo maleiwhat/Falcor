@@ -48,6 +48,9 @@ namespace Falcor
 
     void PathEditor::editCameraProperties(Gui* pGui)
     {
+        // #TODO to enable this, scene editor models need to update from paths, or be notified of keyframe changes. 
+        // Data is current one-way: SceneEditor click-and-drag -> model update -> keyframe update
+
         //// Camera position
         //vec3 p = mpCamera->getPosition();
         //vec3 t = mpCamera->getTarget();
@@ -74,19 +77,16 @@ namespace Falcor
         {
             if (pGui->addIntVar("Active Frame", mActiveFrame, 0, mpPath->getKeyFrameCount() - 1))
             {
-                setActiveFrameID(mActiveFrame);
+                setActiveFrame(mActiveFrame);
             }
         }
     }
 
-    void PathEditor::setActiveFrameID(uint32_t id)
+    void PathEditor::setActiveFrame(uint32_t id)
     {
         mActiveFrame = id;
-        //const auto& frame = mpPath->getKeyFrame(mActiveFrame);
-        //mpCamera->setUpVector(frame.up);
-        //mpCamera->setTarget(frame.target);
-        //mpCamera->setPosition(frame.position);
-        //mFrameTime = frame.time;
+        mFrameTime = mpPath->getKeyFrame(mActiveFrame).time;
+        mActiveChangedCB();
     }
     
     void PathEditor::editPathLoop(Gui* pGui)
@@ -108,14 +108,16 @@ namespace Falcor
         }
     }
 
-    PathEditor::UniquePtr PathEditor::create(const ObjectPath::SharedPtr& pPath, pfnEditComplete editCompleteCB)
+    PathEditor::UniquePtr PathEditor::create(const ObjectPath::SharedPtr& pPath, PathEditorCallback activeChangedCB, PathEditorCallback addRemoveKeyframeCB, PathEditorCallback editCompleteCB)
     {
-        return UniquePtr(new PathEditor(pPath, editCompleteCB));
+        return UniquePtr(new PathEditor(pPath, activeChangedCB, addRemoveKeyframeCB, editCompleteCB));
     }
 
-    PathEditor::PathEditor(const ObjectPath::SharedPtr& pPath, pfnEditComplete editCompleteCB)
+    PathEditor::PathEditor(const ObjectPath::SharedPtr& pPath, PathEditorCallback activeChangedCB, PathEditorCallback addRemoveKeyframeCB, PathEditorCallback editCompleteCB)
         : mEditCompleteCB(editCompleteCB)
         , mpPath(pPath)
+        , mActiveChangedCB(activeChangedCB)
+        , mAddRemoveKeyframeCB(addRemoveKeyframeCB)
     {
         if(mpPath->getKeyFrameCount())
         {
@@ -155,41 +157,48 @@ namespace Falcor
 
     void PathEditor::addFrame(Gui* pGui)
     {
-        //if(pGui->addButton("Add Frame"))
-        //{
-        //    const auto& pos = mpCamera->getPosition();
-        //    const auto& target = mpCamera->getTarget();
-        //    const auto& up = mpCamera->getUpVector();
-        //    mActiveFrame = mpPath->addKeyFrame(mFrameTime, pos, target, up);
-        //    setActiveFrameID(mActiveFrame);
-        //}
+        if(pGui->addButton("Add Frame"))
+        {
+            const auto& currFrame = mpPath->getKeyFrame(mActiveFrame);
+
+            mActiveFrame = mpPath->addKeyFrame(mFrameTime, currFrame.position, currFrame.target, currFrame.up);
+            mAddRemoveKeyframeCB();
+
+            setActiveFrame(mActiveFrame);
+        }
     }
 
     void PathEditor::deleteFrame(Gui* pGui)
     {
-        //if(mpPath->getKeyFrameCount() && pGui->addButton("Remove Frame"))
-        //{
-        //    mpPath->removeKeyFrame(mActiveFrame);
-        //    mActiveFrame = min(mpPath->getKeyFrameCount() - 1, (uint32_t)mActiveFrame);
-        //    if (mpPath->getKeyFrameCount())
-        //    {
-        //        setActiveFrameID(mActiveFrame);
-        //    }
-        //}
+        if(mpPath->getKeyFrameCount() > 1 && pGui->addButton("Remove Frame"))
+        {
+            mpPath->removeKeyFrame(mActiveFrame);
+            mAddRemoveKeyframeCB();
+
+            mActiveFrame = min(mpPath->getKeyFrameCount() - 1, (uint32_t)mActiveFrame);
+            if (mpPath->getKeyFrameCount())
+            {
+                setActiveFrame(mActiveFrame);
+            }
+        }
     }
 
     void PathEditor::updateFrame(Gui* pGui)
     {
-        //if (mpPath->getKeyFrameCount() && pGui->addButton("Update Current Frame"))
-        //{
-        //    const auto& pos = mpCamera->getPosition();
-        //    const auto& target = mpCamera->getTarget();
-        //    const auto& up = mpCamera->getUpVector();
-        //    mpPath->setFramePosition(mActiveFrame, pos);
-        //    mpPath->setFrameTarget(mActiveFrame, target);
-        //    mpPath->setFrameUp(mActiveFrame, up);
-        //    mActiveFrame = mpPath->setFrameTime(mActiveFrame, mFrameTime);
-        //    setActiveFrameID(mActiveFrame);
-        //}
+        // #TODO Currently only updates frame time!
+        if (mpPath->getKeyFrameCount() && pGui->addButton("Update Current Frame Time"))
+        {
+            //const auto& pos = mpCamera->getPosition();
+            //const auto& target = mpCamera->getTarget();
+            //const auto& up = mpCamera->getUpVector();
+            //mpPath->setFramePosition(mActiveFrame, pos);
+            //mpPath->setFrameTarget(mActiveFrame, target);
+            //mpPath->setFrameUp(mActiveFrame, up);
+
+            mActiveFrame = mpPath->setFrameTime(mActiveFrame, mFrameTime);
+            mAddRemoveKeyframeCB();
+
+            setActiveFrame(mActiveFrame);
+        }
     }
 }

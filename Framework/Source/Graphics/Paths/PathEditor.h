@@ -36,22 +36,22 @@ namespace Falcor
     class PathEditor
     {
     public:
-        using pfnEditComplete = std::function<void(void)>;
+        using PathEditorCallback = std::function<void(void)>;
         using UniquePtr = std::unique_ptr<PathEditor>;
         using UniqueConstPtr = std::unique_ptr<const PathEditor>;
 
-        static UniquePtr create(const ObjectPath::SharedPtr& pPath, pfnEditComplete editCompleteCB);
+        static UniquePtr create(const ObjectPath::SharedPtr& pPath, PathEditorCallback activeChangedCB, PathEditorCallback addRemoveKeyframeCB, PathEditorCallback editCompleteCB);
         ~PathEditor();
 
         void render(Gui* pGui);
 
-        void setActiveFrame(uint32_t frameID) { mActiveFrame = frameID; };
+        void setActiveFrame(uint32_t id);
         uint32_t getActiveFrame() const { return mActiveFrame; }
 
         const ObjectPath::SharedPtr& getPath() const { return mpPath; }
 
     private:
-        PathEditor(const ObjectPath::SharedPtr& pPath, pfnEditComplete editCompleteCB);
+        PathEditor(const ObjectPath::SharedPtr& pPath, PathEditorCallback activeChangedCB, PathEditorCallback addRemoveKeyframeCB, PathEditorCallback editCompleteCB);
 
         bool closeEditor(Gui* pGui);
         void editPathName(Gui* pGui);
@@ -63,11 +63,12 @@ namespace Falcor
 
         void updateFrame(Gui* pGui);
         void deleteFrame(Gui* pGui);
-        void setActiveFrameID(uint32_t id);
 
         ObjectPath::SharedPtr mpPath;
 
-        pfnEditComplete mEditCompleteCB = nullptr;
+        PathEditorCallback mEditCompleteCB;
+        PathEditorCallback mActiveChangedCB;
+        PathEditorCallback mAddRemoveKeyframeCB;
 
         int32_t mActiveFrame = 0;
         float mFrameTime = 0;

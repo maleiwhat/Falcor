@@ -350,15 +350,6 @@ namespace Falcor
         }
     }
 
-    void SceneEditor::pathEditorFinishedCB()
-    {
-        mpPathEditor = nullptr;
-        
-        // Remove keyframe models
-        mpEditorScene->deleteModel(mEditorKeyframeModelID);
-        mEditorKeyframeModelID = (uint32_t)-1;
-    }
-
     //////////////////////////////////////////////////////////////////////////
     //// End callbacks
     //////////////////////////////////////////////////////////////////////////
@@ -1334,12 +1325,43 @@ namespace Falcor
         }
     }
 
-    void SceneEditor::startPathEditor()
+    void SceneEditor::pathEditorFrameChangedCB()
     {
-        const auto& pPath = mpScene->getPath(mSelectedPath);
-        mpPathEditor = PathEditor::create(pPath, [this]() {pathEditorFinishedCB(); });
+        // Only update selection if the user was already selecting keyframes
+        if (mSelectedObjectType == ObjectType::Keyframe)
+        {
+            select(mpEditorScene->getModelInstance(mEditorKeyframeModelID, mpPathEditor->getActiveFrame()));
+        }
+    }
+
+    void SceneEditor::pathEditorFrameAddRemoveCB()
+    {
+        deselect();
+        removeSelectedPathKeyframeModels();
+        addSelectedPathKeyframeModels();
+
+        uint32_t activeFrame = std::min(mpPathEditor->getActiveFrame(), mpPathEditor->getPath()->getKeyFrameCount() - 1);
+        mpPathEditor->setActiveFrame(activeFrame);
+
+        select(mpEditorScene->getModelInstance(mEditorKeyframeModelID, activeFrame));
+    }
+
+    void SceneEditor::pathEditorFinishedCB()
+    {
+        deselect();
+
+        mpPathEditor = nullptr;
+
+        removeSelectedPathKeyframeModels();
+    }
+
+    void SceneEditor::addSelectedPathKeyframeModels()
+    {
+        // Assert that models don't exist
+        assert(mEditorKeyframeModelID == (uint32_t)-1);
 
         // Add models to represent keyframes
+        const auto& pPath = mpScene->getPath(mSelectedPath);
         for (uint32_t i = 0; i < pPath->getKeyFrameCount(); i++)
         {
             const auto& frame = pPath->getKeyFrame(i);
@@ -1348,6 +1370,27 @@ namespace Falcor
         }
 
         mEditorKeyframeModelID = mpEditorScene->getModelCount() - 1;
+    }
+
+    void SceneEditor::removeSelectedPathKeyframeModels()
+    {
+        // Assert that models exist
+        assert(mEditorKeyframeModelID != (uint32_t)-1);
+
+        // Remove keyframe models
+        mpEditorScene->deleteModel(mEditorKeyframeModelID);
+        mEditorKeyframeModelID = (uint32_t)-1;
+    }
+
+    void SceneEditor::startPathEditor()
+    {
+        const auto& pPath = mpScene->getPath(mSelectedPath);
+        mpPathEditor = PathEditor::create(pPath, 
+            [this]() { pathEditorFrameChangedCB(); },
+            [this]() { pathEditorFrameAddRemoveCB(); },
+            [this]() { pathEditorFinishedCB(); });
+
+        addSelectedPathKeyframeModels();
 
         mSceneDirty = true;
     }
