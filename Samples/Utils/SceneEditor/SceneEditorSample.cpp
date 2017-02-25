@@ -29,6 +29,8 @@
 
 void SceneEditorSample::onGuiRender()
 {
+    mpGui->addSeparator();
+
     if (mpGui->addButton("Create New Scene"))
     {
         createScene();

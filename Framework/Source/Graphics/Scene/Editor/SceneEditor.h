@@ -247,8 +247,13 @@ namespace Falcor
         void addSelectedPathKeyframeModels();
         void removeSelectedPathKeyframeModels();
 
+        // When path editor closes
         void pathEditorFinishedCB();
+
+        // When switching to a new active frame, or if active frame properties are changed
         void pathEditorFrameChangedCB();
+
+        // When frames are added or removed
         void pathEditorFrameAddRemoveCB();
 
         bool mRenderAllPaths = false;

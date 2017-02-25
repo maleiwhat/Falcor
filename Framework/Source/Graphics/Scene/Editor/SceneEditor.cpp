@@ -987,7 +987,7 @@ namespace Falcor
 
     void SceneEditor::renderGui(Gui* pGui)
     {
-        pGui->pushWindow("Scene Editor", 400, 600, 20, 250);
+        pGui->pushWindow("Scene Editor", 400, 600, 20, 300);
         if (pGui->addButton("Export Scene"))
         {
             saveScene();
@@ -1376,11 +1376,11 @@ namespace Falcor
     {
         assert(mpPathEditor != nullptr);
 
-        // Add models to represent keyframes
         const auto& pPath = mpPathEditor->getPath();
 
         if (pPath->getKeyFrameCount() > 0)
         {
+            // Add models to represent keyframes
             for (uint32_t i = 0; i < pPath->getKeyFrameCount(); i++)
             {
                 const auto& frame = pPath->getKeyFrame(i);
@@ -1407,12 +1407,18 @@ namespace Falcor
     void SceneEditor::startPathEditor()
     {
         const auto& pPath = mpScene->getPath(mSelectedPath);
-        mpPathEditor = PathEditor::create(pPath, 
+        mpPathEditor = PathEditor::create(pPath,
+            mpEditorScene->getActiveCamera(),
             [this]() { pathEditorFrameChangedCB(); },
             [this]() { pathEditorFrameAddRemoveCB(); },
             [this]() { pathEditorFinishedCB(); });
 
         addSelectedPathKeyframeModels();
+
+        if (pPath->getKeyFrameCount() > 0)
+        {
+            select(mpEditorScene->getModelInstance(mEditorKeyframeModelID, 0));
+        }
 
         mSceneDirty = true;
     }

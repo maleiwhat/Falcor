@@ -40,7 +40,7 @@ namespace Falcor
         using UniquePtr = std::unique_ptr<PathEditor>;
         using UniqueConstPtr = std::unique_ptr<const PathEditor>;
 
-        static UniquePtr create(const ObjectPath::SharedPtr& pPath, PathEditorCallback activeChangedCB, PathEditorCallback addRemoveKeyframeCB, PathEditorCallback editCompleteCB);
+        static UniquePtr create(const ObjectPath::SharedPtr& pPath, const Camera::SharedPtr& pCamera, PathEditorCallback frameChangedCB, PathEditorCallback addRemoveKeyframeCB, PathEditorCallback editCompleteCB);
         ~PathEditor();
 
         void render(Gui* pGui);
@@ -51,23 +51,25 @@ namespace Falcor
         const ObjectPath::SharedPtr& getPath() const { return mpPath; }
 
     private:
-        PathEditor(const ObjectPath::SharedPtr& pPath, PathEditorCallback activeChangedCB, PathEditorCallback addRemoveKeyframeCB, PathEditorCallback editCompleteCB);
+        PathEditor(const ObjectPath::SharedPtr& pPath, const Camera::SharedPtr& pCamera, PathEditorCallback frameChangedCB, PathEditorCallback addRemoveKeyframeCB, PathEditorCallback editCompleteCB);
 
         bool closeEditor(Gui* pGui);
         void editPathName(Gui* pGui);
         void editPathLoop(Gui* pGui);
         void editActiveFrameID(Gui* pGui);
         void addFrame(Gui* pGui);
+        void deleteFrame(Gui* pGui);
         void editFrameTime(Gui* pGui);
         void editKeyframeProperties(Gui* pGui);
 
-        void updateFrame(Gui* pGui);
-        void deleteFrame(Gui* pGui);
+        void updateFrameTime(Gui* pGui);
+        void moveToCamera(Gui* pGui);
 
         ObjectPath::SharedPtr mpPath;
+        Camera::SharedPtr mpCamera;
 
         PathEditorCallback mEditCompleteCB;
-        PathEditorCallback mActiveChangedCB;
+        PathEditorCallback mFrameChangedCB;
         PathEditorCallback mAddRemoveKeyframeCB;
 
         int32_t mActiveFrame = 0;

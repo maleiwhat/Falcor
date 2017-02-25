@@ -228,7 +228,7 @@ namespace Falcor
             ;
 #endif
 
-        mpGui->pushWindow("Falcor", 250, 0, 20, 40);
+        mpGui->pushWindow("Falcor", 250, 200, 20, 40);
         if (mpGui->beginGroup("Help"))
         {
             mpGui->addText(help);
@@ -239,7 +239,6 @@ namespace Falcor
         {
             mpGui->addFloatVar("Time", mCurrentTime, 0, FLT_MAX);
             mpGui->addFloatVar("Time Scale", mTimeScale, 0, FLT_MAX);
-            //mpGui->addCheckBox("Freeze Time", mFreezeTime);
 
             if (mpGui->addButton("Reset"))
             {
