@@ -46,34 +46,41 @@ namespace Falcor
         return false;
     }
 
-    void PathEditor::editCameraProperties(Gui* pGui)
+    void PathEditor::editKeyframeProperties(Gui* pGui)
     {
-        // #TODO to enable this, scene editor models need to update from paths, or be notified of keyframe changes. 
-        // Data is current one-way: SceneEditor click-and-drag -> model update -> keyframe update
+        if (mpPath->getKeyFrameCount() > 0)
+        {
+            const auto& keyframe = mpPath->getKeyFrame(mActiveFrame);
 
-        //// Camera position
-        //vec3 p = mpCamera->getPosition();
-        //vec3 t = mpCamera->getTarget();
-        //vec3 u = mpCamera->getUpVector();
-        //if (pGui->addFloat3Var("Camera Position", p, -FLT_MAX, FLT_MAX))
-        //{
-        //    mpCamera->setPosition(p);
-        //}
+            vec3 p = keyframe.position;
+            vec3 t = keyframe.target;
+            vec3 u = keyframe.up;
 
-        //if (pGui->addFloat3Var("Camera Target", t, -FLT_MAX, FLT_MAX))
-        //{
-        //    mpCamera->setTarget(t);
-        //}
+            bool changed = false;
 
-        //if (pGui->addFloat3Var("Camera Up", u, -FLT_MAX, FLT_MAX))
-        //{
-        //    mpCamera->setUpVector(u);
-        //}
+            if (pGui->addFloat3Var("Keyframe Position", p, -FLT_MAX, FLT_MAX))
+            {
+                mpPath->setFramePosition(mActiveFrame, p);
+                changed = true;
+            }
+
+            if (pGui->addFloat3Var("Keyframe Target", t, -FLT_MAX, FLT_MAX))
+            {
+                mpPath->setFrameTarget(mActiveFrame, t);
+                changed = true;
+            }
+
+            if (pGui->addFloat3Var("Keyframe Up", u, -FLT_MAX, FLT_MAX))
+            {
+                mpPath->setFrameUp(mActiveFrame, u);
+                changed = true;
+            }
+        }
     }
 
     void PathEditor::editActiveFrameID(Gui* pGui)
     {
-        if(mpPath->getKeyFrameCount())
+        if(mpPath->getKeyFrameCount() > 0)
         {
             if (pGui->addIntVar("Active Frame", mActiveFrame, 0, mpPath->getKeyFrameCount() - 1))
             {
@@ -119,7 +126,7 @@ namespace Falcor
         , mActiveChangedCB(activeChangedCB)
         , mAddRemoveKeyframeCB(addRemoveKeyframeCB)
     {
-        if(mpPath->getKeyFrameCount())
+        if(mpPath->getKeyFrameCount() > 0)
         {
             mFrameTime = mpPath->getKeyFrame(0).time;
         }
@@ -146,7 +153,7 @@ namespace Falcor
         deleteFrame(pGui);
 
         pGui->addSeparator();
-        editCameraProperties(pGui);
+        editKeyframeProperties(pGui);
         pGui->popWindow();
     }
 
@@ -159,9 +166,17 @@ namespace Falcor
     {
         if(pGui->addButton("Add Frame"))
         {
-            const auto& currFrame = mpPath->getKeyFrame(mActiveFrame);
+            // If path has keyframes, create new keyframe at the location of the selected keyframe
+            if (mpPath->getKeyFrameCount() > 0)
+            {
+                const auto& currFrame = mpPath->getKeyFrame(mActiveFrame);
+                mActiveFrame = mpPath->addKeyFrame(mFrameTime, currFrame.position, currFrame.target, currFrame.up);
+            }
+            else
+            {
+                mActiveFrame = mpPath->addKeyFrame(mFrameTime, glm::vec3(), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            }
 
-            mActiveFrame = mpPath->addKeyFrame(mFrameTime, currFrame.position, currFrame.target, currFrame.up);
             mAddRemoveKeyframeCB();
 
             setActiveFrame(mActiveFrame);
@@ -170,15 +185,19 @@ namespace Falcor
 
     void PathEditor::deleteFrame(Gui* pGui)
     {
-        if(mpPath->getKeyFrameCount() > 1 && pGui->addButton("Remove Frame"))
+        if (mpPath->getKeyFrameCount() > 0)
         {
-            mpPath->removeKeyFrame(mActiveFrame);
-            mAddRemoveKeyframeCB();
-
-            mActiveFrame = min(mpPath->getKeyFrameCount() - 1, (uint32_t)mActiveFrame);
-            if (mpPath->getKeyFrameCount())
+            if(pGui->addButton("Remove Frame"))
             {
-                setActiveFrame(mActiveFrame);
+                mpPath->removeKeyFrame(mActiveFrame);
+                mAddRemoveKeyframeCB();
+
+                mActiveFrame = min(mpPath->getKeyFrameCount() - 1, (uint32_t)mActiveFrame);
+
+                if (mpPath->getKeyFrameCount() > 0)
+                {
+                   setActiveFrame(mActiveFrame);
+                }
             }
         }
     }

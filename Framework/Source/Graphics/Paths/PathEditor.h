@@ -59,7 +59,7 @@ namespace Falcor
         void editActiveFrameID(Gui* pGui);
         void addFrame(Gui* pGui);
         void editFrameTime(Gui* pGui);
-        void editCameraProperties(Gui* pGui);
+        void editKeyframeProperties(Gui* pGui);
 
         void updateFrame(Gui* pGui);
         void deleteFrame(Gui* pGui);

@@ -963,6 +963,17 @@ namespace Falcor
                         if (msgBox("Delete light?", MsgBoxType::OkCancel) == MsgBoxButton::Ok)
                         {
                             mpScene->deleteLight(i);
+
+                            uint32_t instanceID = mLightIDSceneToEditor[i];
+                            bool isLastInstance = mpEditorScene->getModelInstanceCount(mEditorLightModelID) == 1;
+
+                            mpEditorScene->deleteModelInstance(mEditorLightModelID, instanceID);
+
+                            if (isLastInstance)
+                            {
+                                mEditorLightModelID = (uint32_t)-1;
+                            }
+
                             rebuildLightIDMap();
                         }
                     }
@@ -1327,59 +1338,70 @@ namespace Falcor
 
     void SceneEditor::pathEditorFrameChangedCB()
     {
-        // Only update selection if the user was already selecting keyframes
-        if (mSelectedObjectType == ObjectType::Keyframe)
-        {
-            select(mpEditorScene->getModelInstance(mEditorKeyframeModelID, mpPathEditor->getActiveFrame()));
-        }
+        const uint32_t activeFrameID = mpPathEditor->getActiveFrame();
+
+        const auto& pKeyframeInstance = mpEditorScene->getModelInstance(mEditorKeyframeModelID, activeFrameID);
+        select(pKeyframeInstance);
+
+        const auto& frame = mpScene->getPath(mSelectedPath)->getKeyFrame(activeFrameID);
+        pKeyframeInstance->setTranslation(frame.position, false);
+        pKeyframeInstance->setTarget(frame.target);
+        pKeyframeInstance->setUpVector(frame.up);
     }
 
     void SceneEditor::pathEditorFrameAddRemoveCB()
     {
-        deselect();
+        if (mSelectedObjectType == ObjectType::Keyframe)
+        {
+            deselect();
+        }
+
         removeSelectedPathKeyframeModels();
         addSelectedPathKeyframeModels();
-
-        uint32_t activeFrame = std::min(mpPathEditor->getActiveFrame(), mpPathEditor->getPath()->getKeyFrameCount() - 1);
-        mpPathEditor->setActiveFrame(activeFrame);
-
-        select(mpEditorScene->getModelInstance(mEditorKeyframeModelID, activeFrame));
     }
 
     void SceneEditor::pathEditorFinishedCB()
     {
         deselect();
 
-        mpPathEditor = nullptr;
+        if (mpPathEditor->getPath()->getKeyFrameCount() > 0)
+        {
+            removeSelectedPathKeyframeModels();
+        }
 
-        removeSelectedPathKeyframeModels();
+        mpPathEditor = nullptr;
     }
 
     void SceneEditor::addSelectedPathKeyframeModels()
     {
-        // Assert that models don't exist
-        assert(mEditorKeyframeModelID == (uint32_t)-1);
+        assert(mpPathEditor != nullptr);
 
         // Add models to represent keyframes
-        const auto& pPath = mpScene->getPath(mSelectedPath);
-        for (uint32_t i = 0; i < pPath->getKeyFrameCount(); i++)
-        {
-            const auto& frame = pPath->getKeyFrame(i);
-            auto pNewInstance = Scene::ModelInstance::create(mpKeyframeModel, frame.position, frame.target, frame.up, glm::vec3(kKeyframeModelScale), "Frame " + std::to_string(i));
-            mpEditorScene->addModelInstance(pNewInstance);
-        }
+        const auto& pPath = mpPathEditor->getPath();
 
-        mEditorKeyframeModelID = mpEditorScene->getModelCount() - 1;
+        if (pPath->getKeyFrameCount() > 0)
+        {
+            for (uint32_t i = 0; i < pPath->getKeyFrameCount(); i++)
+            {
+                const auto& frame = pPath->getKeyFrame(i);
+                auto pNewInstance = Scene::ModelInstance::create(mpKeyframeModel, frame.position, frame.target, frame.up, glm::vec3(kKeyframeModelScale), "Frame " + std::to_string(i));
+                mpEditorScene->addModelInstance(pNewInstance);
+            }
+
+            mEditorKeyframeModelID = mpEditorScene->getModelCount() - 1;
+        }
     }
 
     void SceneEditor::removeSelectedPathKeyframeModels()
     {
-        // Assert that models exist
-        assert(mEditorKeyframeModelID != (uint32_t)-1);
+        assert(mpPathEditor != nullptr);
 
-        // Remove keyframe models
-        mpEditorScene->deleteModel(mEditorKeyframeModelID);
-        mEditorKeyframeModelID = (uint32_t)-1;
+        if (mpPathEditor->getPath()->getKeyFrameCount() > 0)
+        {
+            // Remove keyframe models
+            mpEditorScene->deleteModel(mEditorKeyframeModelID);
+            mEditorKeyframeModelID = (uint32_t)-1;
+        }
     }
 
     void SceneEditor::startPathEditor()

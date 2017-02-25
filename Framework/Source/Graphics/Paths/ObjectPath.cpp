@@ -142,11 +142,16 @@ namespace Falcor
 
     ObjectPath::Frame ObjectPath::getFrameAt(uint32_t frameID, float t)
     {
-        if (mMode == Interpolation::Linear || mKeyFrames.size() < 3)
+        if (getKeyFrameCount() == 1)
+        {
+            return mKeyFrames[0];
+        }
+
+        if (mMode == Interpolation::Linear || getKeyFrameCount() < 3)
         {
             return linearInterpolation(frameID, t);
         }
-        else
+        else if(mMode == Interpolation::CubicSpline)
         {
             return cubicSplineInterpolation(frameID, t);
         }
