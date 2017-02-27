@@ -52,9 +52,9 @@ namespace Falcor
         const Camera::SharedPtr& getEditorCamera() const { return mpEditorScene->getActiveCamera(); }
 
         void update(double currentTime);
-        void render();
+        void render(RenderContext* pContext);
 
-        bool onMouseEvent(const MouseEvent& mouseEvent);
+        bool onMouseEvent(RenderContext* pContext, const MouseEvent& mouseEvent);
         bool onKeyEvent(const KeyboardEvent& keyEvent);
         void onResizeSwapChain();
 
@@ -121,9 +121,6 @@ namespace Falcor
 
         uint32_t mModelLoadFlags = 0;
         uint32_t mSceneLoadFlags = 0;
-
-        // #TODO get from user
-        RenderContext::SharedPtr mpRenderContext;
 
         //
         // Initialization
@@ -242,7 +239,7 @@ namespace Falcor
         // Paths
         //
 
-        void renderPath();
+        void renderPath(RenderContext* pContext);
 
         void addSelectedPathKeyframeModels();
         void removeSelectedPathKeyframeModels();

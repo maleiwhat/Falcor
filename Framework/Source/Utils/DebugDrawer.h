@@ -50,6 +50,8 @@ namespace Falcor
 
         static SharedPtr create(uint32_t maxVertices = kMaxVertices);
 
+        // #TODO comment
+
         void setColor(const glm::vec3& color) { mCurrentColor = color; }
 
         void addLine(const glm::vec3& a, const glm::vec3& b);

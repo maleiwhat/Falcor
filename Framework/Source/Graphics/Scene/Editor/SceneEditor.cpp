@@ -363,7 +363,6 @@ namespace Falcor
         : mpScene(pScene)
         , mModelLoadFlags(modelLoadFlags)
     {
-        mpRenderContext = gpDevice->getRenderContext();
         mpDebugDrawer = DebugDrawer::create();
 
         initializeEditorRendering();
@@ -557,12 +556,12 @@ namespace Falcor
         mSceneDirty = true;
     }
 
-    void SceneEditor::render()
+    void SceneEditor::render(RenderContext* pContext)
     {
         Camera *pCamera = mpEditorScene->getActiveCamera().get();
 
         // Draw to same Fbo that was set before this call
-        mpSelectionGraphicsState->setFbo(mpRenderContext->getGraphicsState()->getFbo());
+        mpSelectionGraphicsState->setFbo(pContext->getGraphicsState()->getFbo());
 
         //
         // Rendered selected model wireframe
@@ -570,11 +569,11 @@ namespace Falcor
 
         if (mSelectedInstances.empty() == false)
         {
-            mpRenderContext->setGraphicsState(mpSelectionGraphicsState);
+            pContext->setGraphicsState(mpSelectionGraphicsState);
             mpColorProgramVars["ConstColorCB"]["gColor"] = glm::vec3(0.25f, 1.0f, 0.63f);
 
-            mpRenderContext->setGraphicsVars(mpColorProgramVars);
-            mpSelectionSceneRenderer->renderScene(mpRenderContext.get(), pCamera);
+            pContext->setGraphicsVars(mpColorProgramVars);
+            mpSelectionSceneRenderer->renderScene(pContext, pCamera);
         }
 
         //
@@ -582,7 +581,7 @@ namespace Falcor
         //
 
         updateEditorObjectTransforms();
-        mpEditorSceneRenderer->renderScene(mpRenderContext.get(), pCamera);
+        mpEditorSceneRenderer->renderScene(pContext, pCamera);
 
         //
         // Paths
@@ -590,7 +589,7 @@ namespace Falcor
 
         if (mpPathEditor != nullptr || mRenderAllPaths)
         {
-            renderPath();
+            renderPath(pContext);
         }
     }
 
@@ -631,7 +630,7 @@ namespace Falcor
         pInstance->setUpVector(pCamera->getUpVector());
     }
 
-    void SceneEditor::renderPath()
+    void SceneEditor::renderPath(RenderContext* pContext)
     {
         mpDebugDrawer->clear();
 
@@ -649,12 +648,12 @@ namespace Falcor
             mpDebugDrawer->addPath(mpPathEditor->getPath());
         }
 
-        mpPathGraphicsState->setFbo(mpRenderContext->getGraphicsState()->getFbo());
-        mpRenderContext->setGraphicsState(mpPathGraphicsState);
-        mpRenderContext->setGraphicsVars(mpPathProgramVars);
+        mpPathGraphicsState->setFbo(pContext->getGraphicsState()->getFbo());
+        pContext->setGraphicsState(mpPathGraphicsState);
+        pContext->setGraphicsVars(mpPathProgramVars);
 
         // Editor Scene renderer overrides with it's own state and shaders, so use a base SceneRenderer instance for rendering debug draw
-        mpSelectionSceneRenderer->renderDebugDrawer(mpRenderContext.get(), mpEditorScene->getActiveCamera().get(), mpDebugDrawer);
+        mpSelectionSceneRenderer->renderDebugDrawer(pContext, mpEditorScene->getActiveCamera().get(), mpDebugDrawer);
     }
 
     void SceneEditor::rebuildLightIDMap()
@@ -730,7 +729,7 @@ namespace Falcor
         mSceneDirty = true;
     }
 
-    bool SceneEditor::onMouseEvent(const MouseEvent& mouseEvent)
+    bool SceneEditor::onMouseEvent(RenderContext* pContext, const MouseEvent& mouseEvent)
     {
         // Update mouse hold timer
         if (mouseEvent.type == MouseEvent::Type::LeftButtonDown || mouseEvent.type == MouseEvent::Type::LeftButtonUp)
@@ -748,7 +747,7 @@ namespace Falcor
             // Gizmo Selection
             if (mGizmoBeingDragged == false)
             {
-                if (mpEditorPicker->pick(mpRenderContext.get(), mouseEvent.pos, mpEditorScene->getActiveCamera()))
+                if (mpEditorPicker->pick(pContext, mouseEvent.pos, mpEditorScene->getActiveCamera()))
                 {
                     auto& pInstance = mpEditorPicker->getPickedModelInstance();
 
@@ -781,11 +780,11 @@ namespace Falcor
                 // Scene Object Selection
                 if (mMouseHoldTimer.getElapsedTime() < 0.2f)
                 {
-                    if (mpEditorPicker->pick(mpRenderContext.get(), mouseEvent.pos, mpEditorScene->getActiveCamera()))
+                    if (mpEditorPicker->pick(pContext, mouseEvent.pos, mpEditorScene->getActiveCamera()))
                     {
                         select(mpEditorPicker->getPickedModelInstance());
                     }
-                    else if (mpScenePicker->pick(mpRenderContext.get(), mouseEvent.pos, mpEditorScene->getActiveCamera()))
+                    else if (mpScenePicker->pick(pContext, mouseEvent.pos, mpEditorScene->getActiveCamera()))
                     {
                         select(mpScenePicker->getPickedModelInstance());
                     }
