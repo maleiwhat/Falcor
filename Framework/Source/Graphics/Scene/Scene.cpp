@@ -65,10 +65,7 @@ namespace Falcor
     {
         for (auto& path : mpPaths)
         {
-            if (path->detachObject(pMovable))
-            {
-                break;
-            }
+            path->detachObject(pMovable);
         }
     }
 

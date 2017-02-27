@@ -213,28 +213,22 @@ namespace Falcor
         return result;
     }
 
-    bool ObjectPath::attachObject(const IMovableObject::SharedPtr& pObject)
+    void ObjectPath::attachObject(const IMovableObject::SharedPtr& pObject)
     {
         // Only attach the object if its not already found
         if(std::find(mpObjects.begin(), mpObjects.end(), pObject) == mpObjects.end())
         {
             mpObjects.push_back(pObject);
-            return true;
         }
-
-        return false;
     }
 
-    bool ObjectPath::detachObject(const IMovableObject::SharedPtr& pObject)
+    void ObjectPath::detachObject(const IMovableObject::SharedPtr& pObject)
     {
         auto& it = std::find(mpObjects.begin(), mpObjects.end(), pObject);
         if(it != mpObjects.end())
         {
             mpObjects.erase(it);
-            return true;
         }
-
-        return false;
     }
 
     void ObjectPath::removeKeyFrame(uint32_t frameID)

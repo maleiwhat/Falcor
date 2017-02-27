@@ -56,8 +56,8 @@ namespace Falcor
 
         void animate(double currentTime);
 
-        bool attachObject(const IMovableObject::SharedPtr& pObject);
-        bool detachObject(const IMovableObject::SharedPtr& pObject);
+        void attachObject(const IMovableObject::SharedPtr& pObject);
+        void detachObject(const IMovableObject::SharedPtr& pObject);
 
         const IMovableObject::SharedPtr& getAttachedObject(uint32_t i) const { return mpObjects[i]; }
         uint32_t getAttachedObjectCount() const { return (uint32_t)mpObjects.size(); }
