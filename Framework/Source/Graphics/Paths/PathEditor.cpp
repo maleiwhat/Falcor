@@ -155,7 +155,6 @@ namespace Falcor
         deleteFrame(pGui);
         pGui->addSeparator();
         editFrameTime(pGui);
-        pGui->addSeparator();
         updateFrameTime(pGui);
 
         pGui->addSeparator();
