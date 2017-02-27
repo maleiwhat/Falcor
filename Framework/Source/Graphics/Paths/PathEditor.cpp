@@ -144,7 +144,7 @@ namespace Falcor
 
     void PathEditor::render(Gui* pGui)
     {
-        pGui->pushWindow("Path Editor", 300, 400, 440, 400);
+        pGui->pushWindow("Path Editor", 350, 400, 440, 400);
         if (closeEditor(pGui)) return;
         pGui->addSeparator();
         editPathName(pGui);
@@ -228,6 +228,7 @@ namespace Falcor
                 mpPath->setFramePosition(mActiveFrame, mpCamera->getPosition());
                 mpPath->setFrameTarget(mActiveFrame, mpCamera->getTarget());
                 mpPath->setFrameUp(mActiveFrame, mpCamera->getUpVector());
+                mFrameChangedCB();
             }
         }
     }

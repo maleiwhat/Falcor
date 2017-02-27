@@ -171,8 +171,10 @@ namespace Falcor
 
     ObjectPath::Frame ObjectPath::linearInterpolation(uint32_t currentFrame, float t) const
     {
+        const uint32_t nextFrame = std::min(currentFrame + 1, getKeyFrameCount() - 1);
+
         const Frame& current = mKeyFrames[currentFrame];
-        const Frame& next = mKeyFrames[std::min(currentFrame + 1, getKeyFrameCount() - 1)];
+        const Frame& next = mKeyFrames[nextFrame];
 
         Frame result;
         result.position = glm::mix(current.position, next.position, t);

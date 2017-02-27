@@ -130,6 +130,7 @@ namespace Falcor
 
     void DebugDrawer::addPath(const ObjectPath::SharedPtr& pPath)
     {
+        // If a path has one or no keyframes, there's no path to draw
         if (pPath->getKeyFrameCount() <= 1)
         {
             return;
@@ -146,6 +147,7 @@ namespace Falcor
         // Draw quad to cap path beginning
         addQuad(lastQuad);
 
+        // #TODO fix math, epsilon sometimes isn't enough to include the last section
         const float pathEnd = (float)(pPath->getKeyFrameCount() - 1) + glm::epsilon<float>();
         for (float frame = step; frame <= pathEnd; frame += step)
         {
