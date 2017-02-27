@@ -42,17 +42,16 @@ namespace Falcor
 {
     namespace
     {
-        // #TODO Update variable names and strings
-        const char* kActiveModelStr = "Selected Model";
+        const char* kSelectedModelStr = "Selected Model";
         const char* kModelsStr = "Models";
-        const char* kActiveInstanceStr = "Selected Instance";
+        const char* kSelectedInstanceStr = "Selected Instance";
         const char* kActiveAnimationStr = "Active Animation";
         const char* kModelNameStr = "Model Name";
         const char* kInstanceStr = "Instance";
         const char* kCamerasStr = "Cameras";
         const char* kActiveCameraStr = "Active Camera";
         const char* kPathsStr = "Paths";
-        const char* kActivePathStr = "Selected Path";
+        const char* kSelectedPathStr = "Selected Path";
     };
 
     const float SceneEditor::kCameraModelScale = 0.5f;
@@ -98,7 +97,7 @@ namespace Falcor
             modelList.push_back(value);
         }
 
-        if (pGui->addDropdown(kActiveModelStr, modelList, mSelectedModel))
+        if (pGui->addDropdown(kSelectedModelStr, modelList, mSelectedModel))
         {
             mSelectedModelInstance = 0;
         }
@@ -169,7 +168,7 @@ namespace Falcor
         {
             uint32_t activePath = mSelectedPath;
             Gui::DropdownList pathList = getPathDropdownList(mpScene.get(), false);
-            if (pGui->addDropdown(kActivePathStr, pathList, activePath))
+            if (pGui->addDropdown(kSelectedPathStr, pathList, activePath))
             {
                 mSelectedPath = activePath;
                 mSceneDirty = true;
@@ -177,7 +176,7 @@ namespace Falcor
         }
         else
         {
-            std::string msg = kActivePathStr + std::string(": ") + mpScene->getPath(mSelectedPath)->getName();
+            std::string msg = kSelectedPathStr + std::string(": ") + mpScene->getPath(mSelectedPath)->getName();
             pGui->addText(msg.c_str());
         }
     }
@@ -1223,7 +1222,7 @@ namespace Falcor
 
     void SceneEditor::addModelInstanceRange(Gui* pGui)
     {
-        pGui->addIntVar(kActiveInstanceStr, mSelectedModelInstance, 0, mpScene->getModelInstanceCount(mSelectedModel) - 1);
+        pGui->addIntVar(kSelectedInstanceStr, mSelectedModelInstance, 0, mpScene->getModelInstanceCount(mSelectedModel) - 1);
     }
 
     void SceneEditor::deleteModelInstance(Gui* pGui)
@@ -1461,7 +1460,7 @@ namespace Falcor
         }
 
         // Append tag to avoid hash collisions in imgui. ##Tag does not appear when rendered
-        std::string label = std::string(kActivePathStr) + "##" + objType;
+        std::string label = std::string(kSelectedPathStr) + "##" + objType;
 
         uint32_t newPathID = oldPathID;
         if (pGui->addDropdown(label.c_str(), getPathDropdownList(mpScene.get(), true), newPathID))
