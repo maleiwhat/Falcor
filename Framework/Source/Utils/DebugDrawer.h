@@ -40,14 +40,15 @@ namespace Falcor
     {
     public:
 
-        static const uint32_t kMaxVertices = 10000;
+        using SharedPtr = std::shared_ptr<DebugDrawer>;
+        using SharedConstPtr = std::shared_ptr<const DebugDrawer>;
 
-        using UniquePtr = std::unique_ptr<DebugDrawer>;
-        using UniqueConstPtr = std::unique_ptr<const DebugDrawer>;
+        static const uint32_t kMaxVertices = 10000;
+        static const uint32_t kPathDetail = 10; // Segments between keyframes
 
         using Quad = std::array<glm::vec3, 4>;
 
-        static UniquePtr create(uint32_t maxVertices = kMaxVertices);
+        static SharedPtr create(uint32_t maxVertices = kMaxVertices);
 
         void setColor(const glm::vec3& color) { mCurrentColor = color; }
 
@@ -59,12 +60,16 @@ namespace Falcor
 
         void addPath(const ObjectPath::SharedPtr& pPath);
 
-        void render(RenderContext* pContext, Camera* pCamera);
+        uint32_t getVertexCount() const { return (uint32_t)mVertexData.size(); }
+
+        const Vao::SharedPtr& getVao() const { return mpVao; };
+
+        void clear() { mVertexData.clear(); mDirty = true; }
+
+        void uploadBuffer();
 
     private:
         DebugDrawer(uint32_t maxVertices);
-
-        void setCameraData(RenderContext* pContext, Camera* pCamera);
 
         glm::vec3 mCurrentColor;
 
@@ -74,9 +79,8 @@ namespace Falcor
             glm::vec3 color;
         };
 
-        VertexLayout::SharedPtr mpVertexLayout;
-        Buffer::SharedPtr mpVertexBuffer;
         Vao::SharedPtr mpVao;
         std::vector<LineVertex> mVertexData;
+        bool mDirty = true;
     };
 }

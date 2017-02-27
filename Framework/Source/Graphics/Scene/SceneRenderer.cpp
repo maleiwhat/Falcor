@@ -276,6 +276,21 @@ namespace Falcor
         renderScene(pContext, mpScene->getActiveCamera().get());
     }
 
+    void SceneRenderer::renderDebugDrawer(RenderContext* pContext, Camera* pCamera, const DebugDrawer::SharedPtr& pDebugDraw)
+    {
+        updateVariableOffsets(pContext->getGraphicsVars()->getReflection().get());
+
+        CurrentWorkingData currentData;
+        currentData.pCamera = pCamera;
+
+        setPerFrameData(pContext, currentData);
+
+        pDebugDraw->uploadBuffer();
+
+        pContext->getGraphicsState()->setVao(pDebugDraw->getVao());
+        pContext->draw(pDebugDraw->getVertexCount(), 0);
+    }
+
     void SceneRenderer::setupVR()
     {
         if(mRenderMode == RenderMode::SinglePassStereo || mRenderMode == RenderMode::Stereo)

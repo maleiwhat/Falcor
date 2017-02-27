@@ -32,6 +32,7 @@
 #include "Graphics/Scene/Scene.h"
 #include "utils/CpuTimer.h"
 #include "API/ConstantBuffer.h"
+#include "Utils/DebugDrawer.h"
 
 namespace Falcor
 {
@@ -66,6 +67,10 @@ namespace Falcor
             Call update() before using this function otherwise model animation will not work
         */
         void renderScene(RenderContext* pContext, Camera* pCamera);
+
+        /** Renders contents of a debug drawer
+        */
+        void renderDebugDrawer(RenderContext* pContext, Camera* pCamera, const DebugDrawer::SharedPtr& pDebugDraw);
         
         /** Update the camera and model animation.
             Should be called before renderScene(), unless not animations are used and you update the camera manualy

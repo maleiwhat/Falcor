@@ -29,7 +29,7 @@
 #include <vector>
 #include <set>
 #include "Graphics/Paths/PathEditor.h"
-#include "Graphics/Paths/DebugDrawer.h"
+#include "Utils/DebugDrawer.h"
 #include "Utils/Picking/Picking.h"
 #include "Graphics/Scene/Editor/Gizmo.h"
 #include "Graphics/Scene/Editor/SceneEditorRenderer.h"
@@ -232,7 +232,7 @@ namespace Falcor
 
         uint32_t mEditorCameraModelID = (uint32_t)-1;
         uint32_t mEditorLightModelID = (uint32_t)-1;
-        uint32_t mEditorKeyframeModelID = (uint32_t)-1; // #TODO do we need this?
+        uint32_t mEditorKeyframeModelID = (uint32_t)-1;
 
         // Maps between light models and master scene light ID
         std::unordered_map<uint32_t, uint32_t> mLightIDEditorToScene;
@@ -261,7 +261,7 @@ namespace Falcor
         PathEditor::UniquePtr mpPathEditor;
         std::unordered_map<const IMovableObject*, ObjectPath::SharedPtr> mObjToPathMap;
 
-        DebugDrawer::UniquePtr mpDebugDrawer;
+        DebugDrawer::SharedPtr mpDebugDrawer;
 
         GraphicsState::SharedPtr mpPathGraphicsState;
         GraphicsProgram::SharedPtr mpPathProgram;

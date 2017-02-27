@@ -465,8 +465,8 @@
     <ClCompile Include="Graphics\Scene\Editor\SceneEditorRenderer.cpp">
       <Filter>Graphics\Scene\Editor</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\Paths\DebugDrawer.cpp">
-      <Filter>Graphics\Paths</Filter>
+    <ClCompile Include="Utils\DebugDrawer.cpp">
+      <Filter>Utils</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1549,8 +1549,8 @@
     <ClInclude Include="Graphics\Scene\Editor\SceneEditorRenderer.h">
       <Filter>Graphics\Scene\Editor</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\Paths\DebugDrawer.h">
-      <Filter>Graphics\Paths</Filter>
+    <ClInclude Include="Utils\DebugDrawer.h">
+      <Filter>Utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

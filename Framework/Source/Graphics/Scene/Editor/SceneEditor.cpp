@@ -633,6 +633,8 @@ namespace Falcor
 
     void SceneEditor::renderPath()
     {
+        mpDebugDrawer->clear();
+
         mpDebugDrawer->setColor(glm::vec3(0.25f, 1.0f, 0.63f));
 
         if (mRenderAllPaths)
@@ -651,7 +653,8 @@ namespace Falcor
         mpRenderContext->setGraphicsState(mpPathGraphicsState);
         mpRenderContext->setGraphicsVars(mpPathProgramVars);
 
-        mpDebugDrawer->render(mpRenderContext.get(), mpEditorScene->getActiveCamera().get());
+        // Editor Scene renderer overrides with it's own state and shaders, so use a base SceneRenderer instance for rendering debug draw
+        mpSelectionSceneRenderer->renderDebugDrawer(mpRenderContext.get(), mpEditorScene->getActiveCamera().get(), mpDebugDrawer);
     }
 
     void SceneEditor::rebuildLightIDMap()

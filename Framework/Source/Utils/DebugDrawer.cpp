@@ -26,17 +26,18 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "Graphics/Paths/DebugDrawer.h"
+#include "Utils/DebugDrawer.h"
 #include "API/RenderContext.h"
 #include "Graphics/Camera/Camera.h"
 #include "Utils/AABB.h"
 #include <array>
+#include "glm/gtc/constants.hpp"
 
 namespace Falcor
 {
-    DebugDrawer::UniquePtr DebugDrawer::create(uint32_t maxVertices)
+    DebugDrawer::SharedPtr DebugDrawer::create(uint32_t maxVertices)
     {
-        return UniquePtr(new DebugDrawer(maxVertices));
+        return SharedPtr(new DebugDrawer(maxVertices));
     }
 
     void DebugDrawer::addLine(const glm::vec3& a, const glm::vec3& b)
@@ -45,6 +46,7 @@ namespace Falcor
         {
             mVertexData.push_back({a, mCurrentColor});
             mVertexData.push_back({b, mCurrentColor});
+            mDirty = true;
         }
     }
 
@@ -101,14 +103,21 @@ namespace Falcor
         return buildQuad(currFrame.position, up, right);
     }
 
-    // Generates a quad centered at currFrame's position oriented halfway between direction to lastFrame and direction to nextFrame
-    DebugDrawer::Quad createQuadForFrame(const ObjectPath::Frame& lastFrame, const ObjectPath::Frame& currFrame, const ObjectPath::Frame& nextFrame)
+    // Generates a quad centered at currFrame's position oriented halfway between direction to prevFrame and direction to nextFrame
+    DebugDrawer::Quad createQuadForFrame(const ObjectPath::Frame& prevFrame, const ObjectPath::Frame& currFrame, const ObjectPath::Frame& nextFrame)
     {
-        glm::vec3 lastToCurrFoward = currFrame.position - lastFrame.position;
-        glm::vec3 lastToCurrRight = glm::normalize(glm::cross(lastToCurrFoward, lastFrame.up));
+        glm::vec3 lastToCurrFoward = currFrame.position - prevFrame.position;
+        glm::vec3 lastToCurrRight = glm::normalize(glm::cross(lastToCurrFoward, prevFrame.up));
         glm::vec3 lastToCurrUp = glm::normalize(glm::cross(lastToCurrRight, lastToCurrFoward));
 
         glm::vec3 currToNextFoward = nextFrame.position - currFrame.position;
+
+        // If curr and next are the same, use the direction from prev to curr
+        if (glm::length(currToNextFoward) < 0.001f)
+        {
+            currToNextFoward = lastToCurrFoward;
+        }
+
         glm::vec3 currToNextRight = glm::normalize(glm::cross(currToNextFoward, currFrame.up));
         glm::vec3 currToNextUp = glm::normalize(glm::cross(currToNextRight, currToNextFoward));
 
@@ -126,26 +135,25 @@ namespace Falcor
             return;
         }
 
-        // # of line segments connecting each keyframe
-        const uint32_t detail = 10;
-        const float step = 1.0f / (float)detail;
+        const float step = 1.0f / (float)kPathDetail;
 
-        ObjectPath::Frame lastFrame = pPath->getFrameAt(0, 0.0f);
+        ObjectPath::Frame prevFrame = pPath->getFrameAt(0, 0.0f);
         ObjectPath::Frame currFrame = pPath->getFrameAt(0, step);
 
-        Quad lastQuad = createQuadForFrame(lastFrame, pPath->getFrameAt(0, step));
+        Quad lastQuad = createQuadForFrame(prevFrame, pPath->getFrameAt(0, step));
         Quad currQuad;
 
         // Draw quad to cap path beginning
         addQuad(lastQuad);
 
-        for (float frame = step; frame < (float)(pPath->getKeyFrameCount() - 1) - step; frame += step)
+        const float pathEnd = (float)(pPath->getKeyFrameCount() - 1) + glm::epsilon<float>();
+        for (float frame = step; frame <= pathEnd; frame += step)
         {
             uint32_t frameID = (uint32_t)(glm::floor(frame));
             float t = frame - (float)frameID;
 
             ObjectPath::Frame nextFrame = pPath->getFrameAt(frameID, t + step);
-            currQuad = createQuadForFrame(lastFrame, currFrame, nextFrame);
+            currQuad = createQuadForFrame(prevFrame, currFrame, nextFrame);
 
             // Draw current quad
             addQuad(currQuad);
@@ -156,58 +164,36 @@ namespace Falcor
             addLine(lastQuad[2], currQuad[2]);
             addLine(lastQuad[3], currQuad[3]);
 
-            lastFrame = currFrame;
+            prevFrame = currFrame;
             lastQuad = currQuad;
             currFrame = nextFrame;
         }
-
-        // Draw end cap based on direction from end to second-to-last segment
-        currQuad = createQuadForFrame(pPath->getKeyFrame(pPath->getKeyFrameCount() - 1), currFrame);
-
-        addQuad(currQuad);
-
-        // Because of direction the end-cap is generated in, currQuad is backwards
-        addLine(lastQuad[0], currQuad[3]);
-        addLine(lastQuad[1], currQuad[2]);
-        addLine(lastQuad[2], currQuad[1]);
-        addLine(lastQuad[3], currQuad[0]);
     }
 
-    void DebugDrawer::render(RenderContext* pContext, Camera* pCamera)
+    void DebugDrawer::uploadBuffer()
     {
-        setCameraData(pContext, pCamera);
-
-        mpVertexBuffer->updateData(mVertexData.data(), 0, sizeof(LineVertex) * mVertexData.size());
-        pContext->getGraphicsState()->setVao(mpVao);
-        pContext->draw((uint32_t)mVertexData.size(), 0);
-
-        mVertexData.clear();
+        if (mDirty)
+        {
+            auto& pVertexBuffer = mpVao->getVertexBuffer(0);
+            pVertexBuffer->updateData(mVertexData.data(), 0, sizeof(LineVertex) * mVertexData.size());
+            mDirty = false;
+        }
     }
 
     DebugDrawer::DebugDrawer(uint32_t maxVertices)
     {
-        mpVertexBuffer = Buffer::create(sizeof(LineVertex) * maxVertices, Resource::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
+        Buffer::SharedPtr pVertexBuffer = Buffer::create(sizeof(LineVertex) * maxVertices, Resource::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
 
         VertexBufferLayout::SharedPtr pBufferLayout = VertexBufferLayout::create();
         pBufferLayout->addElement("POSITION", 0, ResourceFormat::RGB32Float, 1, 0);
         pBufferLayout->addElement("COLOR", sizeof(glm::vec3), ResourceFormat::RGB32Float, 1, 1);
 
-        mpVertexLayout = VertexLayout::create();
-        mpVertexLayout->addBufferLayout(0, pBufferLayout);
+        VertexLayout::SharedPtr pVertexLayout = VertexLayout::create();
+        pVertexLayout->addBufferLayout(0, pBufferLayout);
 
-        mpVao = Vao::create({ mpVertexBuffer }, mpVertexLayout, nullptr, ResourceFormat::Unknown, Vao::Topology::LineList);
+        mpVao = Vao::create({ pVertexBuffer }, pVertexLayout, nullptr, ResourceFormat::Unknown, Vao::Topology::LineList);
 
         mVertexData.resize(maxVertices);
-    }
-
-    void DebugDrawer::setCameraData(RenderContext* pContext, Camera* pCamera)
-    {
-        //#TODO Do this properly
-        const auto& bufferDesc = pContext->getGraphicsVars()->getReflection()->getBufferDesc("InternalPerFrameCB", ProgramReflection::BufferReflection::Type::Constant);
-        size_t camDataOffset = bufferDesc->getVariableData("gCam.viewMat")->location;
-
-        ConstantBuffer* pCB = pContext->getGraphicsVars()->getConstantBuffer("InternalPerFrameCB").get();
-        pCamera->setIntoConstantBuffer(pCB, camDataOffset);
     }
 
 }
