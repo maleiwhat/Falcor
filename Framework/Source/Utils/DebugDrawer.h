@@ -50,24 +50,40 @@ namespace Falcor
 
         static SharedPtr create(uint32_t maxVertices = kMaxVertices);
 
-        // #TODO comment
-
+        /** Sets the color for future geometry
+        */
         void setColor(const glm::vec3& color) { mCurrentColor = color; }
 
+        /** Adds a line segment
+        */
         void addLine(const glm::vec3& a, const glm::vec3& b);
 
+        /** Adds a quad described by four corner points
+        */
         void addQuad(const Quad& quad);
 
+        /** Adds a world space AABB
+        */
         void addBoundingBox(const BoundingBox& aabb);
 
+        /** Adds a path visualized as a four-sided "tube"
+        */
         void addPath(const ObjectPath::SharedPtr& pPath);
 
+        /** Get how many vertices are currently pushed
+        */
         uint32_t getVertexCount() const { return (uint32_t)mVertexData.size(); }
 
+        /** Get the Vao of vertex data
+        */
         const Vao::SharedPtr& getVao() const { return mpVao; };
 
+        /** Clears vertices
+        */
         void clear() { mVertexData.clear(); mDirty = true; }
 
+        /** Update GPU vertex buffer with current buffer data if different
+        */
         void uploadBuffer();
 
     private:
