@@ -56,7 +56,7 @@ namespace Falcor
 
     const float SceneEditor::kCameraModelScale = 0.5f;
     const float SceneEditor::kLightModelScale = 0.3f;
-    const float SceneEditor::kKeyframeModelScale = 0.3f;
+    const float SceneEditor::kKeyframeModelScale = 0.2f;
 
     const Falcor::Gui::RadioButtonGroup SceneEditor::kGizmoSelectionButtons
     {
@@ -550,7 +550,7 @@ namespace Falcor
             }
         }
 
-        mpKeyframeModel = Model::createFromFile("Framework/Models/Keyframe.obj", Model::GenerateTangentSpace);
+        mpKeyframeModel = Model::createFromFile("Framework/Models/Camera.obj", Model::GenerateTangentSpace);
     }
 
     const glm::vec3& SceneEditor::getActiveInstanceEulerRotation()
@@ -625,6 +625,27 @@ namespace Falcor
                 const auto& pLight = mpScene->getLight(mLightIDEditorToScene[i]);
                 auto& pModelInstance = mpEditorScene->getModelInstance(mEditorLightModelID, i);
                 pModelInstance->setTranslation(pLight->getData().worldPos, true);
+            }
+        }
+
+        // Update keyframe models if path editor is open
+        if (mpPathEditor != nullptr)
+        {
+            assert(mEditorKeyframeModelID != (uint32_t)-1); //#TODO remove me
+            const auto& pPath = mpPathEditor->getPath();
+            for (uint32_t i = 0; i < pPath->getKeyFrameCount(); i++)
+            {
+                auto& pInstance = mpEditorScene->getModelInstance(mEditorKeyframeModelID, i);
+
+                // Make keyframe model bigger if selected
+                if (mpPathEditor->getActiveFrame() == i && mSelectedObjectType == ObjectType::Keyframe)
+                {
+                    pInstance->setScaling(glm::vec3(kKeyframeModelScale * 2.0f));
+                }
+                else
+                {
+                    pInstance->setScaling(glm::vec3(kKeyframeModelScale));
+                }
             }
         }
     }
@@ -1118,6 +1139,7 @@ namespace Falcor
         setActiveGizmo(mActiveGizmoType, false);
 
         mSelectedInstances.clear();
+        mSelectedObjectType = ObjectType::None;
     }
 
     void SceneEditor::setActiveGizmo(Gizmo::Type type, bool show)
@@ -1371,9 +1393,11 @@ namespace Falcor
     {
         const uint32_t activeFrameID = mpPathEditor->getActiveFrame();
 
+        // When active frame ID changed, select a different keyframe in editor
         const auto& pKeyframeInstance = mpEditorScene->getModelInstance(mEditorKeyframeModelID, activeFrameID);
         select(pKeyframeInstance);
 
+        // When properties of active frame changed, update the model representing it
         const auto& frame = mpScene->getPath(mSelectedPath)->getKeyFrame(activeFrameID);
         pKeyframeInstance->setTranslation(frame.position, false);
         pKeyframeInstance->setTarget(frame.target);

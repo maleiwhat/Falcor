@@ -2091,12 +2091,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Data\Framework\Shaders\EditorPS.hlsl">
-      <Filter>Data\Framework\Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="Data\Framework\Shaders\EditorVS.hlsl">
-      <Filter>Data\Framework\Shaders</Filter>
-    </FxCompile>
     <FxCompile Include="Data\Framework\Shaders\SceneEditorPS.hlsl">
       <Filter>Data\Framework\Shaders</Filter>
     </FxCompile>
