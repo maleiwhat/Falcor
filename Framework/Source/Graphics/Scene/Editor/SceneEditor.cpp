@@ -572,10 +572,9 @@ namespace Falcor
         // Draw to same Fbo that was set before this call
         mpSelectionGraphicsState->setFbo(pContext->getGraphicsState()->getFbo());
 
-        //
-        // Rendered selected model wireframe
-        //
+        updateEditorObjectTransforms();
 
+        // Rendered selected model wireframe
         if (mSelectedInstances.empty() == false)
         {
             pContext->setGraphicsState(mpSelectionGraphicsState);
@@ -585,17 +584,10 @@ namespace Falcor
             mpSelectionSceneRenderer->renderScene(pContext, pCamera);
         }
 
-        //
         // Camera/Light Models, and Gizmos
-        //
-
-        updateEditorObjectTransforms();
         mpEditorSceneRenderer->renderScene(pContext, pCamera);
 
-        //
         // Paths
-        //
-
         if (mpPathEditor != nullptr || mRenderAllPaths)
         {
             renderPath(pContext);
@@ -726,7 +718,6 @@ namespace Falcor
 
         case ObjectType::Camera:
             activeGizmo->applyDelta(mpScene->getActiveCamera());
-            updateCameraModelTransform(mpScene->getActiveCameraIndex());
             break;
 
         case ObjectType::Light:
