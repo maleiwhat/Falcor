@@ -137,6 +137,7 @@ namespace Falcor
         }
 
         const float step = 1.0f / (float)kPathDetail;
+        const float epsilon = 1.0e-6f; // A bit more than glm::epsilon
 
         ObjectPath::Frame prevFrame = pPath->getFrameAt(0, 0.0f);
         ObjectPath::Frame currFrame = pPath->getFrameAt(0, step);
@@ -147,10 +148,17 @@ namespace Falcor
         // Draw quad to cap path beginning
         addQuad(lastQuad);
 
-        // #TODO fix math, epsilon sometimes isn't enough to include the last section
-        const float pathEnd = (float)(pPath->getKeyFrameCount() - 1) + glm::epsilon<float>();
+        const float maxFrameIndex = (float)(pPath->getKeyFrameCount() - 1);
+
+        // Add epsilon so loop's <= works properly
+        const float pathEnd = maxFrameIndex + epsilon;
+
         for (float frame = step; frame <= pathEnd; frame += step)
         {
+            // Loop can overshoot the max index
+            // Clamp frame to right below max index so interpolation on the path will work
+            frame = std::min(frame, maxFrameIndex - epsilon);
+
             uint32_t frameID = (uint32_t)(glm::floor(frame));
             float t = frame - (float)frameID;
 
