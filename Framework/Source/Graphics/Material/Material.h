@@ -181,6 +181,14 @@ namespace Falcor
         */
         void removeLayer(uint32_t layerIdx);
 
+        void setLayerType(uint32_t layerId, Layer::Type type) { mData.desc.layers[layerId].type = (uint32_t)type; mDescDirty = true; }
+        void setLayerNdf(uint32_t layerId, Layer::NDF ndf) { mData.desc.layers[layerId].ndf = (uint32_t)ndf; mDescDirty = true; }
+        void setLayerBlend(uint32_t layerId, Layer::Blend blend) { mData.desc.layers[layerId].blending = (uint32_t)blend; mDescDirty = true; }
+        void setLayerAlbedo(uint32_t layerId, const glm::vec4& albedo) { mData.values.layers[layerId].albedo = albedo; }
+        void setLayerRoughness(uint32_t layerId, const glm::vec4& roughness) { mData.values.layers[layerId].roughness = roughness; }
+        void setLayerUserParam(uint32_t layerId, const glm::vec4& data) { mData.values.layers[layerId].extraParam = data; }
+        void setLayerTexture(uint32_t layerId, const Texture::SharedPtr& pTexture);
+
         /** Returns the number of textures in the material
         */
         uint32_t getTextureCount() const { return mTextureCount; }

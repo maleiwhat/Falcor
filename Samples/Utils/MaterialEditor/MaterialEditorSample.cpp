@@ -28,23 +28,195 @@
 #include "MaterialEditorSample.h"
 #include "API/D3D/FalcorD3D.h"
 
+Gui::DropdownList MaterialEditorSample::kModelDropdown = 
+{
+    {(uint32_t)DisplayModel::Sphere, "Sphere"},
+    {(uint32_t)DisplayModel::Cube, "Cube"},
+    {(uint32_t)DisplayModel::Teapot, "Teapot"}
+};
+
 void MaterialEditorSample::onGuiRender()
 {
-    mpGui->addText("Hello from MaterialEditor");
-    if (mpGui->addButton("Click Here"))
+    if (mpGui->addButton("Load Scene file"))
     {
-        msgBox("Now why would you do that?");
+        std::string Filename;
+        if (openFileDialog("Scene files\0*.fscene\0\0", Filename))
+        {
+            mpScene = Scene::loadFromFile(Filename, Model::GenerateTangentSpace);
+            mMaterialSelectionState = true;
+            mSelectedMaterialID = 0;
+        }
     }
+
+    if (mpGui->addButton("New Material"))
+    {
+        bool createMaterial = true;
+
+        if (mpMaterial != nullptr)
+        {
+            if (msgBox("Are you sure?", MsgBoxType::OkCancel) == MsgBoxButton::Cancel)
+            {
+                createMaterial = false;
+            }
+        }
+
+        if (createMaterial)
+        {
+            mpMaterial = Material::create("New Material");
+            mpMaterialEditor = MaterialEditor::create(mpMaterial, false);
+        }
+    }
+
+    mpGui->pushWindow("Preview", 325, 200, 290, 40);
+
+    mpGui->addDropdown("Display Model", kModelDropdown, mActiveModel);
+
+    if (mpGui->beginGroup("Lights"))
+    {
+        mpGui->addRgbColor("Ambient intensity", mAmbientIntensity);
+        if (mpGui->beginGroup("Directional Light"))
+        {
+            mpDirLight->setUiElements(mpGui.get());
+            mpGui->endGroup();
+        }
+        if (mpGui->beginGroup("Point Light"))
+        {
+            mpPointLight->setUiElements(mpGui.get());
+            mpGui->endGroup();
+        }
+        mpGui->endGroup();
+    }
+
+    mpGui->popWindow();
+
+
+    if (mMaterialSelectionState)
+    {
+        renderMaterialSelection();
+    }
+    else if (mpMaterialEditor != nullptr)
+    {
+        mpMaterialEditor->renderGui(mpGui.get());
+    }
+
+}
+
+void MaterialEditorSample::renderMaterialSelection()
+{
+    if (mpScene->getMaterialCount() > 0)
+    {
+        mpGui->pushWindow("Select Material", 400, 150, 20, 300);
+
+        Gui::DropdownList materialDropdown;
+
+        for (uint32_t i = 0; i < mpScene->getMaterialCount(); i++)
+        {
+            materialDropdown.push_back({(int32_t)i, mpScene->getMaterial(i)->getName()});
+        }
+
+        mpGui->addDropdown("Materials", materialDropdown, mSelectedMaterialID);
+
+        if (mpGui->addButton("Open"))
+        {
+            mpMaterial = mpScene->getMaterial(mSelectedMaterialID);
+            mMaterialSelectionState = false;
+        }
+
+        mpGui->popWindow();
+    }
+    else
+    {
+        msgBox("Scene contains no materials!");
+        mMaterialSelectionState = false;
+    }
+}
+
+void MaterialEditorSample::loadModels()
+{
+    mDisplayModels[(uint32_t)DisplayModel::Sphere] = Model::createFromFile("sphere.obj", Model::GenerateTangentSpace);
+    mDisplayModels[(uint32_t)DisplayModel::Cube]   = Model::createFromFile("box.obj", Model::GenerateTangentSpace);
+    mDisplayModels[(uint32_t)DisplayModel::Teapot] = Model::createFromFile("teapot.obj", Model::GenerateTangentSpace);
+}
+
+void MaterialEditorSample::resetCamera()
+{
+    // update the camera position
+    const auto& pModel = mDisplayModels[mActiveModel];
+    const float radius = pModel->getRadius();
+    const glm::vec3& modelCenter = pModel->getCenter();
+
+    glm::vec3 cameraPos = modelCenter;
+    cameraPos.z += radius * 5;
+
+    mpCamera->setPosition(cameraPos);
+    mpCamera->setTarget(modelCenter);
+    mpCamera->setUpVector(glm::vec3(0, 1, 0));
+
+    // Update the controllers
+    mCameraController.setModelParams(modelCenter, radius, 3.5f);
 }
 
 void MaterialEditorSample::onLoad()
 {
+    mpCamera = Camera::create();
+    mpCamera->setDepthRange(0.01f, 1000.0f);
+
+    mpProgram = GraphicsProgram::createFromFile("", "ModelViewer.ps.hlsl");
+
+    // create rasterizer state
+    RasterizerState::Desc solidDesc;
+    solidDesc.setCullMode(RasterizerState::CullMode::Back);
+    auto pRasterizerState = RasterizerState::create(solidDesc);
+
+    // Depth test
+    DepthStencilState::Desc dsDesc;
+    dsDesc.setDepthTest(true);
+    auto pDepthState = DepthStencilState::create(dsDesc);
+
+    mCameraController.attachCamera(mpCamera);
+
+    Sampler::Desc samplerDesc;
+    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+    auto pLinearSampler = Sampler::create(samplerDesc);
+
+    mpDirLight = DirectionalLight::create();
+    mpDirLight->setWorldDirection(glm::vec3(0.13f, 0.27f, -0.9f));
+
+    mpPointLight = PointLight::create();
+
+    mpProgramVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
+    mpGraphicsState = GraphicsState::create();
+
+    mpGraphicsState->setProgram(mpProgram);
+    mpGraphicsState->setRasterizerState(pRasterizerState);
+    mpGraphicsState->setDepthStencilState(pDepthState);
+
+    loadModels();
+    resetCamera();
 }
 
 void MaterialEditorSample::onFrameRender()
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    mpGraphicsState->setFbo(mpDefaultFBO);
+
+    mCameraController.update();
+
+    if (mpMaterial)
+    {
+        mDisplayModels[mActiveModel]->getMesh(0)->setMaterial(mpMaterial);
+    }
+
+    mpDirLight->setIntoConstantBuffer(mpProgramVars["PerFrameCB"].get(), "gDirLight");
+    mpPointLight->setIntoConstantBuffer(mpProgramVars["PerFrameCB"].get(), "gPointLight");
+
+    mpProgramVars["PerFrameCB"]["gAmbient"] = mAmbientIntensity;
+
+    mpRenderContext->setGraphicsState(mpGraphicsState);
+    mpRenderContext->setGraphicsVars(mpProgramVars);
+
+    ModelRenderer::render(mpRenderContext.get(), mDisplayModels[mActiveModel], mpCamera.get());
 }
 
 void MaterialEditorSample::onShutdown()
@@ -54,12 +226,26 @@ void MaterialEditorSample::onShutdown()
 
 bool MaterialEditorSample::onKeyEvent(const KeyboardEvent& keyEvent)
 {
-    return false;
+    bool bHandled = mCameraController.onKeyEvent(keyEvent);
+    if (bHandled == false)
+    {
+        if (keyEvent.type == KeyboardEvent::Type::KeyPressed)
+        {
+            switch (keyEvent.key)
+            {
+            case KeyboardEvent::Key::R:
+                resetCamera();
+                bHandled = true;
+                break;
+            }
+        }
+    }
+    return bHandled;
 }
 
 bool MaterialEditorSample::onMouseEvent(const MouseEvent& mouseEvent)
 {
-    return false;
+    return mCameraController.onMouseEvent(mouseEvent);
 }
 
 void MaterialEditorSample::onDataReload()
@@ -69,13 +255,19 @@ void MaterialEditorSample::onDataReload()
 
 void MaterialEditorSample::onResizeSwapChain()
 {
+    float height = (float)mpDefaultFBO->getHeight();
+    float width = (float)mpDefaultFBO->getWidth();
+
+    mpCamera->setFovY(float(M_PI / 3));
+    float aspectRatio = (width / height);
+    mpCamera->setAspectRatio(aspectRatio);
 }
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
     MaterialEditorSample sample;
     SampleConfig config;
-    config.windowDesc.title = "Falcor Project Template";
+    config.windowDesc.title = "Material Editor";
     config.windowDesc.resizableWindow = true;
     sample.run(config);
 }

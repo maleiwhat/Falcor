@@ -43,4 +43,45 @@ public:
     void onGuiRender() override;
 
 private:
+
+    void renderMaterialSelection();
+
+    void loadModels();
+
+    void resetCamera();
+
+
+    static Gui::DropdownList kModelDropdown;
+
+    Camera::SharedPtr mpCamera;
+    ModelViewCameraController mCameraController;
+
+    GraphicsProgram::SharedPtr mpProgram;
+    GraphicsVars::SharedPtr mpProgramVars;
+    GraphicsState::SharedPtr mpGraphicsState;
+
+    glm::vec3 mAmbientIntensity = glm::vec3(0.1f, 0.1f, 0.1f);
+    PointLight::SharedPtr mpPointLight;
+    DirectionalLight::SharedPtr mpDirLight;
+
+    bool mMaterialSelectionState = false;
+    uint32_t mSelectedMaterialID = 0;
+    Scene::SharedPtr mpScene;
+    Material::SharedPtr mpMaterial;
+
+    MaterialEditor::UniquePtr mpMaterialEditor;
+
+    enum class DisplayModel
+    {
+        Sphere,
+        Cube,
+        Teapot,
+        Count
+    };
+
+    uint32_t mActiveModel = (uint32_t)DisplayModel::Sphere;
+
+    Model::SharedPtr mDisplayModels[(uint32_t)DisplayModel::Count];
+    Scene::ModelInstance::SharedPtr mModelInstances[(uint32_t)DisplayModel::Count];
+
 };

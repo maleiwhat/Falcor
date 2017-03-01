@@ -58,7 +58,7 @@ namespace Falcor
     const float SceneEditor::kLightModelScale = 0.3f;
     const float SceneEditor::kKeyframeModelScale = 0.2f;
 
-    const Falcor::Gui::RadioButtonGroup SceneEditor::kGizmoSelectionButtons
+    const Gui::RadioButtonGroup SceneEditor::kGizmoSelectionButtons
     {
         { (int32_t)Gizmo::Type::Translate, "Translation", false },
         { (int32_t)Gizmo::Type::Rotate, "Rotation", true },

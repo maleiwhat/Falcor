@@ -26,31 +26,55 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "MaterialEditor.h"
+#include "Graphics/Material/MaterialEditor.h"
 #include "Utils/Gui.h"
 #include "Utils/OS.h"
 #include "Graphics/TextureHelper.h"
 #include "API/Texture.h"
 #include "Graphics/Scene/Scene.h"
 #include "Graphics/Scene/SceneExporter.h"
-#if 0
+
 namespace Falcor
 {
-    static const std::string kRemoveLayer = "Remove Layer";
-    static const std::string kAddLayer    = "Add Layer";
-    static const std::string kActiveLayer = "Active Layer";
-    static const std::string kLayerType   = "Type";
-    static const std::string kLayerNDF    = "NDF";
-    static const std::string kLayerBlend  = "Blend";
-    static const std::string kLayerGroup  = "Layer";
-    static const std::string kAlbedo      = "Color";
-    static const std::string kRoughness   = "Roughness";
-    static const std::string kExtraParam  = "Extra Param";
-    static const std::string kNormal      = "Normal";
-    static const std::string kHeight      = "Height";
-    static const std::string kAlpha       = "Alpha Test";
-    static const std::string kAddTexture  = "Load Texture";
+    // #TODO keep or remove?
+    static const std::string kRemoveLayer  = "Remove Layer";
+    static const std::string kAddLayer     = "Add Layer";
+    static const std::string kActiveLayer  = "Active Layer";
+    static const std::string kLayerType    = "Type";
+    static const std::string kLayerNDF     = "NDF";
+    static const std::string kLayerBlend   = "Blend";
+    static const std::string kLayerGroup   = "Layer";
+    static const std::string kAlbedo       = "Color";
+    static const std::string kRoughness    = "Roughness";
+    static const std::string kExtraParam   = "Extra Param";
+    static const std::string kNormal       = "Normal";
+    static const std::string kHeight       = "Height";
+    static const std::string kAlpha        = "Alpha Test";
+    static const std::string kAddTexture   = "Load Texture";
     static const std::string kClearTexture = "Clear Texture";
+
+    Gui::DropdownList MaterialEditor::kLayerTypeDropdown =
+    {
+        { MatLambert,    "Lambert" },
+        { MatConductor,  "Conductor" },
+        { MatDielectric, "Dielectric" },
+        { MatEmissive,   "Emissive" },
+        { MatUser,       "Custom" }
+    };
+
+    Gui::DropdownList MaterialEditor::kLayerBlendDropdown =
+    {
+        { BlendFresnel,  "Fresnel" },
+        { BlendAdd,      "Additive" },
+        { BlendConstant, "Constant Factor" }
+    };
+
+    Gui::DropdownList MaterialEditor::kLayerNDFDropdown =
+    {
+        { NDFBeckmann, "Beckmann" },
+        { NDFGGX,      "GGX" },
+        { NDFUser,     "User Defined" }
+    };
 
     Texture::SharedPtr loadTexture(bool useSrgb)
     {
@@ -74,14 +98,121 @@ namespace Falcor
 
     MaterialEditor::MaterialEditor(const Material::SharedPtr& pMaterial, bool useSrgb) : mpMaterial(pMaterial), mUseSrgb(useSrgb)
     {
-        assert(pMaterial);
-        // The height bias starts with 1 by default. Set it to zero
-        float zero = 0;
-        setHeightCB<0>(&zero, this);
-        initUI();
+
+        //// The height bias starts with 1 by default. Set it to zero
+        //float zero = 0;
+        //setHeightCB<0>(&zero, this);
+        //initUI();
     }
 
-    MaterialEditor::~MaterialEditor() = default;
+#if 0
+    void MaterialEditor::initUI()
+    {
+        mpGui = Gui::create("Material Editor");
+        mpGui->setSize(300, 300);
+        mpGui->setPosition(50, 300);
+
+        mpGui->addButton("Save Material", &MaterialEditor::saveMaterial, this);
+        mpGui->addSeparator();
+        mpGui->addTextBoxWithCallback("Name", &MaterialEditor::setName, &MaterialEditor::getNameCB, this);
+        mpGui->addIntVarWithCallback("ID", &MaterialEditor::setId, &MaterialEditor::getIdCB, this, "", 0);
+        mpGui->addCheckBoxWithCallback("Double-Sided", &MaterialEditor::setDoubleSided, &MaterialEditor::getDoubleSidedCB, this);
+
+        mpGui->addSeparator("");
+
+        initNormalElements();
+        initAlphaElements();
+        initHeightElements();
+
+        mpGui->addSeparator("");
+        mpGui->addButton(kAddLayer, &MaterialEditor::addLayer, this);
+        mpGui->addButton(kRemoveLayer, &MaterialEditor::removeLayerCB, this);
+        mpGui->addSeparator("");
+        mpGui->addIntVarWithCallback(kActiveLayer, &MaterialEditor::setActiveLayer, &MaterialEditor::getActiveLayerCB, this);
+
+        refreshLayerElements();
+    }
+
+#endif
+
+    void MaterialEditor::renderGui(Gui* pGui)
+    {
+        pGui->pushWindow("Material Editor", 400, 600, 20, 300);
+
+        if (pGui->addButton("Save Material"))
+        {
+            saveMaterial();
+        }
+
+        pGui->addSeparator();
+
+        setName(pGui);
+        setId(pGui);
+        setDoubleSided(pGui);
+        pGui->addSeparator();
+
+        setNormalMap(pGui);
+        setAlphaMap(pGui);
+        setHeightMap(pGui);
+
+        setHeightModifiers(pGui);
+        setAlphaThreshold(pGui);
+
+        for (uint32_t i = 0; i < mpMaterial->getNumLayers(); i++)
+        {
+            std::string groupName("Layer " + std::to_string(i));
+
+            if (pGui->beginGroup(groupName.c_str()))
+            {
+                setLayerTexture(pGui, i);
+                setLayerType(pGui, i);
+                setLayerNdf(pGui, i);
+                setLayerBlend(pGui, i);
+
+                const auto layer = mpMaterial->getLayer(i);
+
+                switch (layer.type)
+                {
+                case Material::Layer::Type::Lambert:
+                case Material::Layer::Type::Emissive:
+                    setLayerAlbedo(pGui, i);
+                    break;
+
+                case Material::Layer::Type::Conductor:
+                    setLayerAlbedo(pGui, i);
+                    setLayerRoughness(pGui, i);
+                    setConductorLayerParams(pGui, i);
+                    break;
+
+                case Material::Layer::Type::Dielectric:
+                    setLayerAlbedo(pGui, i);
+                    setLayerRoughness(pGui, i);
+                    setDialectricLayerParams(pGui, i);
+                    break;
+
+                default:
+                    break;
+                }
+
+                bool layerRemoved = removeLayer(pGui, i);
+
+                pGui->endGroup();
+
+                if (layerRemoved)
+                {
+                    break;
+                }
+            }
+        }
+
+        if (mpMaterial->getNumLayers() < MatMaxLayers)
+        {
+            pGui->addSeparator();
+            addLayer(pGui);
+        }
+
+        pGui->popWindow();
+    }
 
     Material* MaterialEditor::getMaterial(void* pUserData)
     {
@@ -90,238 +221,234 @@ namespace Falcor
         return pMaterial.get();
     }
 
-    MaterialLayer* MaterialEditor::getActiveLayer(void* pUserData)
+    void MaterialEditor::saveMaterial(Gui* pGui)
     {
-        MaterialEditor* pEditor = (MaterialEditor*)pUserData;
-        const MaterialLayer* pLayer = getMaterial(pUserData)->getLayer(pEditor->mActiveLayer);
-        return const_cast<MaterialLayer*>(pLayer);
-    }
-
-    void GUI_CALL MaterialEditor::saveMaterialCB(void* pUserData)
-    {
-        MaterialEditor* pEditor = (MaterialEditor*)pUserData;
+        MaterialEditor* pEditor = (MaterialEditor*)pGui;
         pEditor->saveMaterial();
     }
 
-    void GUI_CALL MaterialEditor::getNameCB(void* pVal, void* pUserData)
+    void MaterialEditor::setName(Gui* pGui)
     {
-        MaterialEditor* pEditor = (MaterialEditor*)pUserData;
-        *(std::string*)pVal = pEditor->mpMaterial->getName();
-    }
+        char nameBuf[256];
+        strcpy_s(nameBuf, mpMaterial->getName().c_str());
 
-    void GUI_CALL MaterialEditor::setNameCB(const void* pVal, void* pUserData)
-    {
-        getMaterial(pUserData)->setName(*(std::string*)pVal);
-    }
-
-    void GUI_CALL MaterialEditor::getIdCB(void* pVal, void* pUserData)
-    {
-        MaterialEditor* pEditor = (MaterialEditor*)pUserData;
-        *(uint32_t*)pVal = pEditor->mpMaterial->getId();
-    }
-
-    void GUI_CALL MaterialEditor::setIdCB(const void* pVal, void* pUserData)
-    {
-        getMaterial(pUserData)->setID(*(uint32_t*)pVal);
-    }
-
-    void GUI_CALL MaterialEditor::getDoubleSidedCB(void* pVal, void* pUserData)
-    {
-        MaterialEditor* pEditor = (MaterialEditor*)pUserData;
-        *(uint32_t*)pVal = pEditor->mpMaterial->isDoubleSided();
-    }
-
-    void GUI_CALL MaterialEditor::setDoubleSidedCB(const void* pVal, void* pUserData)
-    {
-        getMaterial(pUserData)->setDoubleSided(*(bool*)pVal);
-    }
-
-    void GUI_CALL MaterialEditor::addLayerCB(void* pUserData)
-    {
-        MaterialEditor* pEditor = (MaterialEditor*)pUserData;
-        Material* pMaterial = pEditor->mpMaterial.get();
-        if(pMaterial->getNumActiveLayers() >= MatMaxLayers)
+        if (pGui->addTextBox("Name", nameBuf, arraysize(nameBuf)))
         {
-            msgBox("Exceeded the number of supported layers. Can't add anymore");
-            return;
+            mpMaterial->setName(nameBuf);
         }
-
-        MaterialLayer Layer;
-        Layer.type = MatLambert;    // Set a Type so that the material know we have a layer
-
-        pMaterial->addLayer(Layer);
-        pEditor->refreshLayerElements();
-        pEditor->mActiveLayer = uint32_t(pMaterial->getNumActiveLayers() - 1);
     }
 
-    void GUI_CALL MaterialEditor::removeLayerCB(void* pUserData)
+    void MaterialEditor::setId(Gui* pGui)
     {
-        MaterialEditor* pEditor = (MaterialEditor*)pUserData;
-        Material* pMaterial = pEditor->mpMaterial.get();
-        if(pMaterial->getNumActiveLayers() == 0)
+        int32_t id = mpMaterial->getId();
+
+        if (pGui->addIntVar("ID", id, 0))
         {
-            msgBox("Material doesn't have any layer. Nothing to remove");
-            return;
+            mpMaterial->setID(id);
         }
-        pMaterial->removeLayer(pEditor->mActiveLayer);
-        pEditor->mActiveLayer = 0;
-        pEditor->refreshLayerElements();
     }
 
-    void GUI_CALL MaterialEditor::getActiveLayerCB(void* pVal, void* pUserData)
+    void MaterialEditor::setDoubleSided(Gui* pGui)
     {
-        MaterialEditor* pEditor = (MaterialEditor*)pUserData;
-        *(uint32_t*)pVal = pEditor->mActiveLayer;
-    }
-
-    void GUI_CALL MaterialEditor::setActiveLayerCB(const void* pVal, void* pUserData)
-    {
-        MaterialEditor* pEditor = (MaterialEditor*)pUserData;
-        pEditor->mActiveLayer = *(uint32_t*)pVal;
-    }
-
-    void GUI_CALL MaterialEditor::getLayerTypeCB(void* pVal, void* pUserData)
-    {
-        *(uint32_t*)pVal = getActiveLayer(pUserData)->type;
-    }
-
-    void GUI_CALL MaterialEditor::setLayerTypeCB(const void* pVal, void* pUserData)
-    {
-        MaterialEditor* pEditor = (MaterialEditor*)pUserData;
-        getActiveLayer(pUserData)->type = *(uint32_t*)pVal;
-        pEditor->refreshLayerElements();
-    }
-
-    void GUI_CALL MaterialEditor::getLayerNdfCB(void* pVal, void* pUserData)
-    {
-        *(uint32_t*)pVal = getActiveLayer(pUserData)->ndf;
-    }
-
-    void GUI_CALL MaterialEditor::setLayerNdfCB(const void* pVal, void* pUserData)
-    {
-        getActiveLayer(pUserData)->ndf = *(uint32_t*)pVal;
-    }
-
-    void GUI_CALL MaterialEditor::getLayerBlendCB(void* pVal, void* pUserData)
-    {
-        *(uint32_t*)pVal = getActiveLayer(pUserData)->blending;
-    }
-
-    void GUI_CALL MaterialEditor::setLayerBlendCB(const void* pVal, void* pUserData)
-    {
-        getActiveLayer(pUserData)->blending = *(uint32_t*)pVal;
-    }
-
-#define layer_value_callbacks(value_, value_stmt_)                                          \
-    template<uint32_t channel>                                                              \
-    void GUI_CALL MaterialEditor::get##value_##CB(void* pVal, void* pUserData)              \
-    {                                                                                       \
-        *(float*)pVal = value_stmt_.constantColor[channel];                                 \
-    }                                                                                       \
-                                                                                            \
-    template<uint32_t channel>                                                              \
-    void GUI_CALL MaterialEditor::set##value_##CB(const void* pVal, void* pUserData)        \
-    {                                                                                       \
-        value_stmt_.constantColor[channel] = *(float*)pVal;                                 \
-    }                                                                                       \
-                                                                                            \
-    void GUI_CALL MaterialEditor::load##value_##Texture(void* pUserData)                    \
-    {                                                                                       \
-        MaterialEditor* pEditor = (MaterialEditor*)pUserData;                               \
-        auto pTexture = loadTexture(pEditor->mUseSrgb);                                     \
-        if(pTexture)                                                                        \
-        {                                                                                   \
-            value_stmt_.texture.pTexture = pTexture.get();                                  \
-        }                                                                                   \
-    }                                                                                       \
-                                                                                            \
-    void GUI_CALL MaterialEditor::remove##value_##Texture(void* pUserData)                  \
-    {                                                                                       \
-        value_stmt_.texture.pTexture = nullptr;                                             \
-    }
-
-    layer_value_callbacks(Albedo, getActiveLayerData(pUserData)->albedo);
-    layer_value_callbacks(Roughness, getActiveLayerData(pUserData)->roughness);
-    layer_value_callbacks(ExtraParam, getActiveLayerData(pUserData)->extraParam);
-    layer_value_callbacks(Normal, const_cast<MaterialValue&>(getMaterial(pUserData)->getNormalValue()));
-    layer_value_callbacks(Alpha, const_cast<MaterialValue&>(getMaterial(pUserData)->getAlphaValue()));
-    layer_value_callbacks(Height, const_cast<MaterialValue&>(getMaterial(pUserData)->getHeightValue()));
-#undef layer_value_callbacks
-
-    void MaterialEditor::refreshLayerElements() const
-    {
-        mpGui->removeGroup(kLayerGroup);
-
-        bool hasLayers = mpMaterial->getNumActiveLayers() > 0;
-        mpGui->setVarVisibility(kActiveLayer, "", hasLayers);
-
-        if(hasLayers)
+        bool doubleSided = mpMaterial->isDoubleSided();
+        if (pGui->addCheckBox("Double Sided", doubleSided))
         {
-            initLayerTypeElements();
-            initLayerBlendElements();
+            mpMaterial->setDoubleSided(doubleSided);
+        }
+    }
 
-            mpGui->setVarRange(kActiveLayer, "", 0, int32_t(mpMaterial->getNumActiveLayers() - 1));
-            switch(mpMaterial->getLayer(mActiveLayer)->type)
+    void MaterialEditor::setHeightModifiers(Gui* pGui)
+    {
+        glm::vec2 heightMods = mpMaterial->getHeightModifiers();
+
+        pGui->addFloatVar("Height Bias", heightMods[0], -FLT_MAX, FLT_MAX);
+        pGui->addFloatVar("Height Scale", heightMods[1], 0.0f, FLT_MAX);
+
+        mpMaterial->setHeightModifiers(heightMods);
+    }
+
+    void MaterialEditor::setAlphaThreshold(Gui* pGui)
+    {
+        float a = mpMaterial->getAlphaThreshold();
+
+        if(pGui->addFloatVar("Alpha Threshold", a, 0.0f, 1.0f))
+        {
+            mpMaterial->setAlphaThreshold(a);
+        }
+    }
+
+    void MaterialEditor::addLayer(Gui* pGui)
+    {
+        if (pGui->addButton("Add Layer"))
+        {
+            if (mpMaterial->getNumLayers() >= MatMaxLayers)
             {
-            case MatLambert:
-                initLambertLayer();
-                break;
-            case MatConductor:
-                initConductorLayer();
-                break;
-            case MatDielectric:
-                initDielectricLayer();
-                break;
-            case MatEmissive:
-                initEmissiveLayer();
-                break;
-            default:
-                should_not_get_here();
-                break;
+                msgBox("Exceeded the number of supported layers. Can't add anymore");
+                return;
             }
-            mpGui->expandGroup(kLayerGroup);
+
+            mpMaterial->addLayer(Material::Layer());
         }
     }
 
-    void MaterialEditor::initLayerTypeElements() const
+    void MaterialEditor::setLayerType(Gui* pGui, uint32_t layerID)
     {
-        Gui::dropdown_list layerTypes;
-        layerTypes.push_back({MatLambert,    "Lambert"});
-        layerTypes.push_back({MatConductor,  "Conductor"});
-        layerTypes.push_back({MatDielectric, "Dielectric"});
-        layerTypes.push_back({MatEmissive,   "Emissive"});
-        layerTypes.push_back({MatUser,       "Custom"});
+        uint32_t type = (uint32_t)mpMaterial->getLayer(layerID).type;
 
-        mpGui->addDropdownWithCallback(kLayerType, layerTypes, &MaterialEditor::setLayerTypeCB, &MaterialEditor::getLayerTypeCB, (void*)this, kLayerGroup);
+        std::string label("Type##" + std::to_string(layerID));
+        if (pGui->addDropdown(label.c_str(), kLayerTypeDropdown, type))
+        {
+            mpMaterial->setLayerType(layerID, (Material::Layer::Type)type);
+        }
     }
 
-    void MaterialEditor::initLayerBlendElements() const
+    void MaterialEditor::setLayerNdf(Gui* pGui, uint32_t layerID)
     {
-        Gui::dropdown_list blendTypes;
-        blendTypes.push_back({BlendFresnel,  "Fresnel"});
-        blendTypes.push_back({BlendConstant, "Constant Factor"});
-        blendTypes.push_back({BlendAdd, "Additive"});
+        uint32_t ndf = (uint32_t)mpMaterial->getLayer(layerID).ndf;
 
-        mpGui->addDropdownWithCallback(kLayerBlend, blendTypes, &MaterialEditor::setLayerBlendCB, &MaterialEditor::getLayerBlendCB, (void*)this, kLayerGroup);
+        std::string label("NDF##" + std::to_string(layerID));
+        if (pGui->addDropdown(label.c_str(), kLayerNDFDropdown, ndf))
+        {
+            mpMaterial->setLayerNdf(layerID, (Material::Layer::NDF)ndf);
+        }
     }
 
-    void MaterialEditor::initLayerNdfElements() const
+    void MaterialEditor::setLayerBlend(Gui* pGui, uint32_t layerID)
     {
-        Gui::dropdown_list ndfTypes;
-        ndfTypes.push_back({NDFBeckmann, "Beckmann"});
-        ndfTypes.push_back({NDFGGX, "GGX"});
-        ndfTypes.push_back({NDFUser, "User Defined"});
+        uint32_t blend = (uint32_t)mpMaterial->getLayer(layerID).blend;
 
-        mpGui->addDropdownWithCallback(kLayerNDF, ndfTypes, &MaterialEditor::setLayerNdfCB, &MaterialEditor::getLayerNdfCB, (void*)this, kLayerGroup);
+        std::string label("Blend##" + std::to_string(layerID));
+        if (pGui->addDropdown(label.c_str(), kLayerBlendDropdown, blend))
+        {
+            mpMaterial->setLayerBlend(layerID, (Material::Layer::Blend)blend);
+        }
     }
 
-#define load_textures(value_)       \
-        mpGui->addButton(kAddTexture, &MaterialEditor::load##value_##Texture, (void*)this, k##value_);                                                                 \
-        mpGui->addButton(kClearTexture, &MaterialEditor::remove##value_##Texture, (void*)this, k##value_);
+    void MaterialEditor::setLayerAlbedo(Gui* pGui, uint32_t layerID)
+    {
+        glm::vec4 albedo = mpMaterial->getLayer(layerID).albedo;
 
-#define add_value_var(value_, name_, channel_, minval_, maxval_, group_) \
-    mpGui->addFloatVarWithCallback(name_, &MaterialEditor::set##value_##CB<channel_>, &MaterialEditor::get##value_##CB<channel_>, (void*)this, group_, 0, maxval_, 0.001f);
+        std::string label("Albedo##" + std::to_string(layerID));
+        if (pGui->addRgbaColor(label.c_str(), albedo))
+        {
+            mpMaterial->setLayerAlbedo(layerID, albedo);
+        }
+    }
 
+    void MaterialEditor::setLayerRoughness(Gui* pGui, uint32_t layerID)
+    {
+        glm::vec4 roughness = mpMaterial->getLayer(layerID).roughness;
+
+        std::string label("Roughness##" + std::to_string(layerID));
+        if (pGui->addFloatVar(label.c_str(), roughness[0], 0.0f, 1.0f))
+        {
+            mpMaterial->setLayerRoughness(layerID, roughness);
+        }
+    }
+
+    void MaterialEditor::setLayerTexture(Gui* pGui, uint32_t layerID)
+    {
+        const auto pTexture = mpMaterial->getLayer(layerID).pTexture;
+
+        auto& pNewTexture = changeTexture(pGui, "Texture##" + std::to_string(layerID), pTexture);
+        if (pNewTexture != nullptr)
+        {
+            mpMaterial->setLayerTexture(layerID, pNewTexture);
+        }
+    }
+
+    void MaterialEditor::setConductorLayerParams(Gui* pGui, uint32_t layerID)
+    {
+        if (pGui->beginGroup("IoR"))
+        {
+            const auto layer = mpMaterial->getLayer(layerID);
+            float r = layer.extraParam[0]; // #TODO Verify indices
+            float i = layer.extraParam[1];
+
+            pGui->addFloatVar("Real", r, 0.0f, FLT_MAX);
+            pGui->addFloatVar("Imaginary", i, 0.0f, FLT_MAX);
+
+            mpMaterial->setLayerUserParam(layerID, glm::vec4(r, i, 0.0f, 0.0f));
+
+            pGui->endGroup();
+        }
+    }
+
+    void MaterialEditor::setDialectricLayerParams(Gui* pGui, uint32_t layerID)
+    {
+        const auto layer = mpMaterial->getLayer(layerID);
+        float ior = layer.extraParam[0];
+
+        if (pGui->addFloatVar("IoR", ior, 0.0f, FLT_MAX))
+        {
+            mpMaterial->setLayerUserParam(layerID, glm::vec4(ior, 0.0f, 0.0f, 0.0f));
+        }
+    }
+
+    bool MaterialEditor::removeLayer(Gui* pGui, uint32_t layerID)
+    {
+        std::string label("Remove##" + std::to_string(layerID));
+        if (pGui->addButton(label.c_str()))
+        {
+            mpMaterial->removeLayer(layerID);
+            return true;
+        }
+
+        return false;
+    }
+
+    void MaterialEditor::setNormalMap(Gui* pGui)
+    {
+        const auto pTexture = mpMaterial->getNormalMap();
+
+        auto& pNewTexture = changeTexture(pGui, "Normal Map", pTexture);
+        if (pNewTexture != nullptr)
+        {
+            mpMaterial->setNormalMap(pNewTexture);
+        }
+    }
+
+    void MaterialEditor::setAlphaMap(Gui* pGui)
+    {
+        const auto pTexture = mpMaterial->getAlphaMap();
+
+        auto& pNewTexture = changeTexture(pGui, "Alpha Map", pTexture);
+        if (pNewTexture != nullptr)
+        {
+            mpMaterial->setAlphaMap(pNewTexture);
+        }
+    }
+
+    void MaterialEditor::setHeightMap(Gui* pGui)
+    {
+        const auto pTexture = mpMaterial->getHeightMap();
+
+        auto& pNewTexture = changeTexture(pGui, "Height Map", pTexture);
+        if (pNewTexture != nullptr)
+        {
+            mpMaterial->setHeightMap(pNewTexture);
+        }
+    }
+
+    Texture::SharedPtr MaterialEditor::changeTexture(Gui* pGui, const std::string& label, const Texture::SharedPtr& pCurrentTexture)
+    {
+        std::string texPath(pCurrentTexture ? pCurrentTexture->getSourceFilename() : "");
+
+        char texPathBuff[1024];
+        strcpy_s(texPathBuff, texPath.c_str());
+
+        pGui->addTextBox(label.c_str(), texPathBuff, arraysize(texPathBuff));
+
+        std::string buttonLabel("Change##" + label);
+        if (pGui->addButton(buttonLabel.c_str(), true))
+        {
+            return loadTexture(mUseSrgb);
+        }
+
+        return nullptr;
+    }
+
+#if 0
     void MaterialEditor::initAlbedoElements() const
     {
         load_textures(Albedo);
@@ -383,35 +510,7 @@ namespace Falcor
     {
         initAlbedoElements();
     }
-
-#undef load_textures
-
-    void MaterialEditor::initUI()
-    {
-        mpGui = Gui::create("Material Editor");
-        mpGui->setSize(300, 300);
-        mpGui->setPosition(50, 300);
-
-        mpGui->addButton("Save Material", &MaterialEditor::saveMaterialCB, this);
-        mpGui->addSeparator();
-        mpGui->addTextBoxWithCallback("Name", &MaterialEditor::setNameCB, &MaterialEditor::getNameCB, this);
-        mpGui->addIntVarWithCallback("ID", &MaterialEditor::setIdCB, &MaterialEditor::getIdCB, this, "", 0);
-        mpGui->addCheckBoxWithCallback("Double-Sided", &MaterialEditor::setDoubleSidedCB, &MaterialEditor::getDoubleSidedCB, this);
-
-        mpGui->addSeparator("");
-
-        initNormalElements();
-        initAlphaElements();
-        initHeightElements();
-
-        mpGui->addSeparator("");
-        mpGui->addButton(kAddLayer, &MaterialEditor::addLayerCB, this);
-        mpGui->addButton(kRemoveLayer, &MaterialEditor::removeLayerCB, this);
-        mpGui->addSeparator("");
-        mpGui->addIntVarWithCallback(kActiveLayer, &MaterialEditor::setActiveLayerCB, &MaterialEditor::getActiveLayerCB, this);
-
-        refreshLayerElements();
-    }
+#endif
 
     void MaterialEditor::saveMaterial()
     {
@@ -426,4 +525,3 @@ namespace Falcor
         }
     }
 }
-#endif

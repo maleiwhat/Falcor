@@ -27,7 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "Utils/Gui.h"
-#include "Material.h"
+#include "Graphics/Material/Material.h"
 
 namespace Falcor
 {
@@ -40,24 +40,22 @@ namespace Falcor
         using UniquePtr = std::unique_ptr<MaterialEditor>;
         using UniqueConstPtr = std::unique_ptr<const MaterialEditor>;
 
-        static UniquePtr create(const Material::SharedPtr& pMaterial, bool useSrgb) {return nullptr;}
+        static UniquePtr create(const Material::SharedPtr& pMaterial, bool useSrgb);
+
         ~MaterialEditor() {};
 
-        void setUiVisibility(bool visible);
+        void renderGui(Gui* pGui);
 
     private:
-        MaterialEditor(const Material::SharedPtr& pMaterial, bool useSrgb) {};
+        MaterialEditor(const Material::SharedPtr& pMaterial, bool useSrgb);
 
         Material::SharedPtr mpMaterial = nullptr;
         Gui::UniquePtr mpGui = nullptr;
-        uint32_t mActiveLayer = 0;
         bool mUseSrgb;
 
-        void initUI();
-        void refreshLayerElements() const;
-        void initLayerTypeElements() const;
-        void initLayerNdfElements() const;
-        void initLayerBlendElements() const;
+        static Gui::DropdownList kLayerTypeDropdown;
+        static Gui::DropdownList kLayerBlendDropdown;
+        static Gui::DropdownList kLayerNDFDropdown;
 
         void initLambertLayer() const;
         void initConductorLayer() const;
@@ -66,48 +64,37 @@ namespace Falcor
 
         void saveMaterial();
 
-        static void GUI_CALL saveMaterialCB(void* pUserData);
+        void saveMaterial(Gui* pGui);
 
-        static void GUI_CALL getNameCB(void* pVal, void* pUserData);
-        static void GUI_CALL setNameCB(const void* pVal, void* pUserData);
+        // Per Material
+        void setName(Gui* pGui);
+        void setId(Gui* pGui);
+        void setDoubleSided(Gui* pGui);
+        void setHeightModifiers(Gui* pGui);
+        void setAlphaThreshold(Gui* pGui);
 
-        static void GUI_CALL getIdCB(void* pVal, void* pUserData);
-        static void GUI_CALL setIdCB(const void* pVal, void* pUserData);
+        void setNormalMap(Gui* pGui);
+        void setAlphaMap(Gui* pGui);
+        void setHeightMap(Gui* pGui);
+        // setAOMap
 
-        static void GUI_CALL getDoubleSidedCB(void* pVal, void* pUserData);
-        static void GUI_CALL setDoubleSidedCB(const void* pVal, void* pUserData);
+        void addLayer(Gui* pGui);
 
-        static void GUI_CALL addLayerCB(void* pUserData);
-        static void GUI_CALL removeLayerCB(void* pUserData);
+        // Per Layer
+        void setLayerType(Gui* pGui, uint32_t layerID);
+        void setLayerNdf(Gui* pGui, uint32_t layerID);
+        void setLayerBlend(Gui* pGui, uint32_t layerID);
+        void setLayerAlbedo(Gui* pGui, uint32_t layerID);
+        void setLayerRoughness(Gui* pGui, uint32_t layerID);
+        void setLayerTexture(Gui* pGui, uint32_t layerID);
 
-        static void GUI_CALL getActiveLayerCB(void* pVal, void* pUserData);
-        static void GUI_CALL setActiveLayerCB(const void* pVal, void* pUserData);
+        void setConductorLayerParams(Gui* pGui, uint32_t layerID);
+        void setDialectricLayerParams(Gui* pGui, uint32_t layerID);
 
-        static void GUI_CALL getLayerTypeCB(void* pVal, void* pUserData);
-        static void GUI_CALL setLayerTypeCB(const void* pVal, void* pUserData);
+        bool removeLayer(Gui* pGui, uint32_t layerID); // #TODO this should probably return true if removed to terminate rest of elements being rendered
 
-        static void GUI_CALL getLayerNdfCB(void* pVal, void* pUserData);
-        static void GUI_CALL setLayerNdfCB(const void* pVal, void* pUserData);
 
-        static void GUI_CALL getLayerBlendCB(void* pVal, void* pUserData);
-        static void GUI_CALL setLayerBlendCB(const void* pVal, void* pUserData);
-
-#define value_callbacks(value_)             \
-        template<uint32_t Channel>          \
-        static void GUI_CALL get##value_##CB(void* pVal, void* pUserData);            \
-        template<uint32_t Channel>                                                    \
-        static void GUI_CALL set##value_##CB(const void* pVal, void* pUserData);      \
-        static void GUI_CALL load##value_##Texture(void* pUserData);                  \
-        static void GUI_CALL remove##value_##Texture(void* pUserData);                \
-        void init##value_##Elements() const;
-
-        value_callbacks(Albedo);
-        value_callbacks(Roughness);
-        value_callbacks(ExtraParam);
-        value_callbacks(Normal);
-        value_callbacks(Height);
-        value_callbacks(Alpha);
-#undef value_callbacks
+        Texture::SharedPtr changeTexture(Gui* pGui, const std::string& label, const Texture::SharedPtr& pCurrentTexture);
 
         static Material* getMaterial(void* pUserData);
         static MaterialLayerValues* getActiveLayerData(void* pUserData);
