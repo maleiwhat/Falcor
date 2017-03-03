@@ -81,6 +81,7 @@ namespace Falcor
 
         static const char* kMaterials = "materials";
         static const char* kMaterialID     = "id";
+        static const char* kMaterialDoubleSided = "double_sided";
         static const char* kMaterialAlpha = "alpha";
         static const char* kMaterialNormal = "normal";
         static const char* kMaterialHeight = "height";

@@ -81,7 +81,7 @@ namespace Falcor
         rapidjson::Value jkey;
         jkey.SetString(key.c_str(), (uint32_t)key.size(), jallocator);
         rapidjson::Value jvec(rapidjson::kArrayType);
-        for(int32_t i = 0; i < value.length(); i++)
+        for (int32_t i = 0; i < value.length(); i++)
         {
             jvec.PushBack(value[i], jallocator);
         }
@@ -101,13 +101,13 @@ namespace Falcor
 
         // Write everything else
         bool exportPaths = (exportOptions & ExportPaths) != 0;
-        if(exportOptions & ExportGlobalSettings)    writeGlobalSettings(exportPaths);
-        if(exportOptions & ExportModels)            writeModels();
-        if(exportOptions & ExportLights)            writeLights();
-        if(exportOptions & ExportCameras)           writeCameras();
-        if(exportOptions & ExportUserDefined)       writeUserDefinedSection();
-        if(exportOptions & ExportPaths)             writePaths();
-        if(exportOptions & ExportMaterials)         writeMaterials();
+        if (exportOptions & ExportGlobalSettings)    writeGlobalSettings(exportPaths);
+        if (exportOptions & ExportModels)            writeModels();
+        if (exportOptions & ExportLights)            writeLights();
+        if (exportOptions & ExportCameras)           writeCameras();
+        if (exportOptions & ExportUserDefined)       writeUserDefinedSection();
+        if (exportOptions & ExportPaths)             writePaths();
+        if (exportOptions & ExportMaterials)         writeMaterials();
 
         // Get the output string
         rapidjson::StringBuffer buffer;
@@ -118,7 +118,7 @@ namespace Falcor
 
         // Output the file
         std::ofstream outputStream(mFilename.c_str());
-        if(outputStream.fail())
+        if (outputStream.fail())
         {
             logError("Can't open output scene file " + mFilename + ".\nExporting failed.");
             return false;
@@ -146,14 +146,14 @@ namespace Falcor
         addString(jmodel, allocator, SceneKeys::kFilename, stripDataDirectories(pScene->getModel(modelID)->getFilename()));
         addString(jmodel, allocator, SceneKeys::kName, pScene->getModel(modelID)->getName());
 
-        if(pScene->getModel(modelID)->hasAnimations())
+        if (pScene->getModel(modelID)->hasAnimations())
         {
             addLiteral(jmodel, allocator, SceneKeys::kActiveAnimation, pScene->getModel(modelID)->getActiveAnimation());
         }
 
         rapidjson::Value jsonInstanceArray;
         jsonInstanceArray.SetArray();
-        for(uint32_t i = 0 ; i < pScene->getModelInstanceCount(modelID); i++)
+        for (uint32_t i = 0; i < pScene->getModelInstanceCount(modelID); i++)
         {
             rapidjson::Value jsonInstance;
             jsonInstance.SetObject();
@@ -165,11 +165,11 @@ namespace Falcor
 
             // Translate rotation to degrees
             glm::vec3 rotation = pInstance->getEulerRotation();
-            for(uint32_t c = 0; c < 3; c++)
+            for (uint32_t c = 0; c < 3; c++)
             {
                 rotation[c] = glm::degrees(rotation[c]);
             }
-            
+
             addVector(jsonInstance, allocator, SceneKeys::kRotationVec, rotation);
 
             jsonInstanceArray.PushBack(jsonInstance, allocator);
@@ -180,7 +180,7 @@ namespace Falcor
 
     void SceneExporter::writeModels()
     {
-        if(mpScene->getModelCount() == 0)
+        if (mpScene->getModelCount() == 0)
         {
             return;
         }
@@ -188,7 +188,7 @@ namespace Falcor
         rapidjson::Value jsonModelArray;
         jsonModelArray.SetArray();
 
-        for(uint32_t i = 0; i < mpScene->getModelCount(); i++)
+        for (uint32_t i = 0; i < mpScene->getModelCount(); i++)
         {
             rapidjson::Value jsonModel;
             createModelValue(mpScene, i, mJDoc.GetAllocator(), jsonModel);
@@ -221,7 +221,7 @@ namespace Falcor
         jsonLight.SetObject();
         const auto pLight = pScene->getLight(lightID);
 
-        switch(pLight->getType())
+        switch (pLight->getType())
         {
         case LightPoint:
             createPointLightValue((PointLight*)pLight.get(), allocator, jsonLight);
@@ -236,14 +236,14 @@ namespace Falcor
 
     void SceneExporter::writeLights()
     {
-        if(mpScene->getLightCount() == 0)
+        if (mpScene->getLightCount() == 0)
         {
             return;
         }
 
         rapidjson::Value jsonLightsArray(rapidjson::kArrayType);
 
-        for(uint32_t i = 0; i < mpScene->getLightCount(); i++)
+        for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
         {
             rapidjson::Value jsonLight;
             createLightValue(mpScene, i, mJDoc.GetAllocator(), jsonLight);
@@ -270,13 +270,13 @@ namespace Falcor
 
     void SceneExporter::writeCameras()
     {
-        if(mpScene->getCameraCount() == 0)
+        if (mpScene->getCameraCount() == 0)
         {
             return;
         }
 
         rapidjson::Value jsonCameraArray(rapidjson::kArrayType);
-        for(uint32_t i = 0; i < mpScene->getCameraCount(); i++)
+        for (uint32_t i = 0; i < mpScene->getCameraCount(); i++)
         {
             rapidjson::Value jsonCamera;
             createCameraValue(mpScene, i, mJDoc.GetAllocator(), jsonCamera);
@@ -287,7 +287,7 @@ namespace Falcor
 
     void SceneExporter::writePaths()
     {
-        if(mpScene->getPathCount() == 0)
+        if (mpScene->getPathCount() == 0)
         {
             return;
         }
@@ -296,7 +296,7 @@ namespace Falcor
 
         // Loop over the paths
         rapidjson::Value jsonPathsArray(rapidjson::kArrayType);
-        for(uint32_t pathID = 0; pathID < mpScene->getPathCount(); pathID++)
+        for (uint32_t pathID = 0; pathID < mpScene->getPathCount(); pathID++)
         {
             const auto pPath = mpScene->getPath(pathID);
             rapidjson::Value jsonPath;
@@ -306,7 +306,7 @@ namespace Falcor
 
             // Add the keyframes
             rapidjson::Value jsonFramesArray(rapidjson::kArrayType);
-            for(uint32_t frameID = 0; frameID < pPath->getKeyFrameCount(); frameID++)
+            for (uint32_t frameID = 0; frameID < pPath->getKeyFrameCount(); frameID++)
             {
                 const auto& frame = pPath->getKeyFrame(frameID);
                 rapidjson::Value jsonFrame(rapidjson::kObjectType);
@@ -362,7 +362,7 @@ namespace Falcor
 
     void SceneExporter::writeUserDefinedSection()
     {
-        if(mpScene->getUserVariableCount() == 0)
+        if (mpScene->getUserVariableCount() == 0)
         {
             return;
         }
@@ -370,12 +370,12 @@ namespace Falcor
         rapidjson::Value jsonUserValues(rapidjson::kObjectType);
         auto& allocator = mJDoc.GetAllocator();
 
-        for(uint32_t varID = 0; varID < mpScene->getUserVariableCount(); varID++)
+        for (uint32_t varID = 0; varID < mpScene->getUserVariableCount(); varID++)
         {
             std::string name;
             const auto& var = mpScene->getUserVariable(varID, name);
-    
-            switch(var.type)
+
+            switch (var.type)
             {
             case Scene::UserVariable::Type::Int:
                 addLiteral(jsonUserValues, allocator, name, var.i32);
@@ -416,22 +416,9 @@ namespace Falcor
         addJsonValue(mJDoc, allocator, SceneKeys::kUserDefined, jsonUserValues);
     }
 
-    void createMaterialValue(const MaterialValues& matValue, rapidjson::Value& jsonVal, rapidjson::Document::AllocatorType& allocator)
-    {
-        // DISABLED_FOR_D3D12
-//         jsonVal.SetObject();
-//         // Constant color
-//         addVector(jsonVal, allocator, SceneKeys::kMaterialColor, matValue.constantColor);
-//         if(matValue.texture.pTexture)
-//         {
-//             std::string filename = stripDataDirectories(matValue.texture.pTexture->getSourceFilename());            
-//             addString(jsonVal, allocator, SceneKeys::kMaterialTexture, filename);
-//         }
-    }
-
     const char* getMaterialLayerType(uint32_t type)
     {
-        switch(type)
+        switch (type)
         {
         case MatLambert:
             return SceneKeys::kMaterialLambert;
@@ -448,10 +435,10 @@ namespace Falcor
             return "";
         }
     }
-    
+
     const char* getMaterialLayerNDF(uint32_t ndf)
     {
-        switch(ndf)
+        switch (ndf)
         {
         case NDFBeckmann:
             return SceneKeys::kMaterialBeckmann;
@@ -467,7 +454,7 @@ namespace Falcor
 
     const char* getMaterialLayerBlending(uint32_t blend)
     {
-        switch(blend)
+        switch (blend)
         {
         case BlendFresnel:
             return SceneKeys::kMaterialBlendFresnel;
@@ -481,67 +468,61 @@ namespace Falcor
         }
     }
 
-    void createMaterialLayer(const MaterialLayerValues* pData, const MaterialLayerDesc* pDesc, rapidjson::Value& jsonVal, rapidjson::Document::AllocatorType& allocator)
+    void createMaterialTextureValue(const Texture::SharedPtr& pTexture, rapidjson::Value& jsonVal, rapidjson::Document::AllocatorType& allocator)
+    {
+        if (pTexture)
+        {
+            std::string filename = stripDataDirectories(pTexture->getSourceFilename());
+            addString(jsonVal, allocator, SceneKeys::kMaterialTexture, filename);
+        }
+    }
+
+    void createMaterialLayer(const Material::Layer& layer, rapidjson::Value& jsonVal, rapidjson::Document::AllocatorType& allocator)
     {
         jsonVal.SetObject();
-        addString(jsonVal, allocator, SceneKeys::kMaterialLayerType, getMaterialLayerType(pDesc->type));
-        addString(jsonVal, allocator, SceneKeys::kMaterialNDF, getMaterialLayerNDF(pDesc->ndf));
-        addString(jsonVal, allocator, SceneKeys::kMaterialBlend, getMaterialLayerBlending(pDesc->blending));
 
-        rapidjson::Value jsonAlbedo;
-        // DISABLED_FOR_D3D12
-//         createMaterialValue(pData->albedo, jsonAlbedo, allocator);
-//         addJsonValue(jsonVal, allocator, SceneKeys::kMaterialAlbedo, jsonAlbedo);
-// 
-//         rapidjson::Value jsonRoughness;
-//         createMaterialValue(pData->roughness, jsonRoughness, allocator);
-//         addJsonValue(jsonVal, allocator, SceneKeys::kMaterialRoughness, jsonRoughness);
-// 
-//         rapidjson::Value jsonExtra;
-//         createMaterialValue(pData->extraParam, jsonExtra, allocator);
-//         addJsonValue(jsonVal, allocator, SceneKeys::kMaterialExtraParam, jsonExtra);
+        addString(jsonVal, allocator, SceneKeys::kMaterialLayerType, getMaterialLayerType((uint32_t)layer.type));
+        addString(jsonVal, allocator, SceneKeys::kMaterialNDF, getMaterialLayerNDF((uint32_t)layer.ndf));
+        addString(jsonVal, allocator, SceneKeys::kMaterialBlend, getMaterialLayerBlending((uint32_t)layer.blend));
+
+        addVector(jsonVal, allocator, SceneKeys::kMaterialAlbedo, layer.albedo);
+
+        addVector(jsonVal, allocator, SceneKeys::kMaterialRoughness, layer.roughness);
+
+        addVector(jsonVal, allocator, SceneKeys::kMaterialExtraParam, layer.extraParam);
     }
 
     void createMaterialValue(const Material* pMaterial, rapidjson::Value& jsonMaterial, rapidjson::Document::AllocatorType& allocator)
     {
         // Name
-        const std::string& name = pMaterial->getName();
-        if(name.length())
-        {
-            addString(jsonMaterial, allocator, SceneKeys::kName, name);
-        }
+        addString(jsonMaterial, allocator, SceneKeys::kName, pMaterial->getName());
 
         // ID
         addLiteral(jsonMaterial, allocator, SceneKeys::kMaterialID, pMaterial->getId());
 
+        // Double-Sided
+        addBool(jsonMaterial, allocator, SceneKeys::kMaterialDoubleSided, pMaterial->isDoubleSided());
+
         // Alpha layer
-        rapidjson::Value jsonAlpha;
-        // DISABLED_FOR_D3D12
-//         createMaterialValue(pMaterial->getAlphaValue(), jsonAlpha, allocator);
-//         addJsonValue(jsonMaterial, allocator, SceneKeys::kMaterialAlpha, jsonAlpha);
-// 
-//         // Normal
-//         rapidjson::Value jsonNormal;
-//         createMaterialValue(pMaterial->getNormalMap(), jsonNormal, allocator);
-//         addJsonValue(jsonMaterial, allocator, SceneKeys::kMaterialNormal, jsonNormal);
-// 
-//         // Height
-//         rapidjson::Value jsonHeight;
-//         createMaterialValue(pMaterial->getHeightMap(), jsonHeight, allocator);
-//         addJsonValue(jsonMaterial, allocator, SceneKeys::kMaterialHeight, jsonHeight);
+        addString(jsonMaterial, allocator, SceneKeys::kMaterialAlpha, stripDataDirectories(pMaterial->getAlphaMap()->getSourceFilename()));
+
+        // Normal
+        addString(jsonMaterial, allocator, SceneKeys::kMaterialNormal, stripDataDirectories(pMaterial->getNormalMap()->getSourceFilename()));
+
+        // Height
+        addString(jsonMaterial, allocator, SceneKeys::kMaterialHeight, stripDataDirectories(pMaterial->getHeightMap()->getSourceFilename()));
 
         // Loop over the layers
-        if(pMaterial->getNumLayers() > 0)
+        if (pMaterial->getNumLayers() > 0)
         {
             rapidjson::Value jsonLayerArray(rapidjson::kArrayType);
-            for(uint32_t i = 0; i < pMaterial->getNumLayers(); i++)
+            for (uint32_t i = 0; i < pMaterial->getNumLayers(); i++)
             {
-                // DISABLED_FOR_D3D12
-//                 const MaterialLayerDesc* pDesc = pMaterial->getLayerDesc(i);
-//                 const MaterialLayerValues* pData = pMaterial->getLayerValues(i);
-//                 rapidjson::Value jsonLayer;
-//                 createMaterialLayer(pData, pDesc, jsonLayer, allocator);
-//                 jsonLayerArray.PushBack(jsonLayer, allocator);
+                Material::Layer layer = pMaterial->getLayer(i);
+
+                rapidjson::Value jsonLayer;
+                createMaterialLayer(layer, jsonLayer, allocator);
+                jsonLayerArray.PushBack(jsonLayer, allocator);
             }
 
             addJsonValue(jsonMaterial, allocator, SceneKeys::kMaterialLayers, jsonLayerArray);
@@ -550,7 +531,7 @@ namespace Falcor
 
     void SceneExporter::writeMaterials()
     {
-        if(mpScene->getMaterialCount() == 0)
+        if (mpScene->getMaterialCount() == 0)
         {
             return;
         }
@@ -558,10 +539,10 @@ namespace Falcor
         auto& allocator = mJDoc.GetAllocator();
         rapidjson::Value jsonMaterialArray(rapidjson::kArrayType);
 
-        for(uint32_t i = 0; i < mpScene->getMaterialCount(); i++)
+        for (uint32_t i = 0; i < mpScene->getMaterialCount(); i++)
         {
             const auto pMaterial = mpScene->getMaterial(i);
-            rapidjson::Value jsonMaterial(rapidjson::kObjectType);            
+            rapidjson::Value jsonMaterial(rapidjson::kObjectType);
             createMaterialValue(pMaterial.get(), jsonMaterial, allocator);
             jsonMaterialArray.PushBack(jsonMaterial, allocator);
         }
