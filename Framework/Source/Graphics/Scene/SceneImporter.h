@@ -73,17 +73,14 @@ namespace Falcor
         bool createCamera(const rapidjson::Value& jsonCamera);
 
         bool createMaterial(const rapidjson::Value& jsonMaterial);
-        bool createMaterialLayer(const rapidjson::Value& jsonLayer, MaterialLayerValues& layerData, MaterialLayerDesc& layerDesc);
-        bool createMaterialValue(const rapidjson::Value& jsonValue, MaterialValues& matValue);
+        bool createMaterialLayer(const rapidjson::Value& jsonLayer, Material::Layer& layerOut);
         bool createAllMaterialLayers(const rapidjson::Value& jsonLayerArray, Material* pMaterial);
 
-        bool createMaterialLayerType(const rapidjson::Value& jsonValue, MaterialLayerDesc& matLayer);
-        bool createMaterialLayerNDF(const rapidjson::Value& jsonValue, MaterialLayerDesc& matLayer);
-        bool createMaterialLayerBlend(const rapidjson::Value& jsonValue, MaterialLayerDesc& matLayer);
+        bool createMaterialLayerType(const rapidjson::Value& jsonValue, Material::Layer& layerOut);
+        bool createMaterialLayerNDF(const rapidjson::Value& jsonValue, Material::Layer& layerOut);
+        bool createMaterialLayerBlend(const rapidjson::Value& jsonValue, Material::Layer& layerOut);
 
         bool createMaterialTexture(const rapidjson::Value& jsonValue, Texture::SharedPtr& pTexture);
-        bool createMaterialValueColor(const rapidjson::Value& jsonValue, glm::vec4& color);
-
 
         Scene* error(const std::string& msg);
 
