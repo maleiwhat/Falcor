@@ -37,35 +37,32 @@ Gui::DropdownList MaterialEditorSample::kModelDropdown =
 
 void MaterialEditorSample::onGuiRender()
 {
-    if (mpGui->addButton("Load Scene file"))
+    if (mpGui->addButton("Load from scene file"))
     {
-        std::string Filename;
-        if (openFileDialog("Scene files\0*.fscene\0\0", Filename))
+        if (mpMaterial == nullptr || msgBox("Are you sure?", MsgBoxType::OkCancel) == MsgBoxButton::Ok)
         {
-            mpScene = Scene::loadFromFile(Filename, Model::GenerateTangentSpace);
-            mMaterialSelectionState = true;
-            mSelectedMaterialID = 0;
+            std::string filename;
+            if (openFileDialog("Scene files\0*.fscene\0\0", filename))
+            {
+                mpScene = Scene::loadFromFile(filename, Model::GenerateTangentSpace);
+                mMaterialSelectionState = true;
+                mSelectedMaterialID = 0;
+            }
         }
     }
 
     if (mpGui->addButton("New Material"))
     {
-        bool createMaterial = true;
-
-        if (mpMaterial != nullptr)
-        {
-            if (msgBox("Are you sure?", MsgBoxType::OkCancel) == MsgBoxButton::Cancel)
-            {
-                createMaterial = false;
-            }
-        }
-
-        if (createMaterial)
+        if (mpMaterial == nullptr || msgBox("You will lose unsaved changes on the current material.", MsgBoxType::OkCancel) == MsgBoxButton::Ok)
         {
             mpMaterial = Material::create("New Material");
             mpMaterialEditor = MaterialEditor::create(mpMaterial, false);
         }
     }
+
+    //
+    // Preview Window to control lighting
+    //
 
     mpGui->pushWindow("Preview", 325, 200, 290, 40);
 
@@ -90,6 +87,7 @@ void MaterialEditorSample::onGuiRender()
     mpGui->popWindow();
 
 
+    // When scene has been loaded, render UI to select material from scene file
     if (mMaterialSelectionState)
     {
         renderMaterialSelection();
@@ -98,22 +96,22 @@ void MaterialEditorSample::onGuiRender()
     {
         mpMaterialEditor->renderGui(mpGui.get());
     }
-
 }
 
 void MaterialEditorSample::renderMaterialSelection()
 {
     if (mpScene->getMaterialCount() > 0)
     {
-        mpGui->pushWindow("Select Material", 400, 150, 20, 300);
+        mpGui->pushWindow("Select Material", 350, 100, 20, 300);
 
+        // Generate materials list
         Gui::DropdownList materialDropdown;
-
         for (uint32_t i = 0; i < mpScene->getMaterialCount(); i++)
         {
             materialDropdown.push_back({(int32_t)i, mpScene->getMaterial(i)->getName()});
         }
 
+        // Material selection
         mpGui->addDropdown("Materials", materialDropdown, mSelectedMaterialID);
 
         if (mpGui->addButton("Open"))
@@ -146,14 +144,14 @@ void MaterialEditorSample::resetCamera()
     const glm::vec3& modelCenter = pModel->getCenter();
 
     glm::vec3 cameraPos = modelCenter;
-    cameraPos.z += radius * 5;
+    cameraPos.z += radius * 2.0f;
 
     mpCamera->setPosition(cameraPos);
     mpCamera->setTarget(modelCenter);
     mpCamera->setUpVector(glm::vec3(0, 1, 0));
 
     // Update the controllers
-    mCameraController.setModelParams(modelCenter, radius, 3.5f);
+    mCameraController.setModelParams(modelCenter, radius, 2.0f);
 }
 
 void MaterialEditorSample::onLoad()
