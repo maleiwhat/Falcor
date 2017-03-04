@@ -35,11 +35,14 @@
 #include <sstream>
 
 namespace Falcor
-{    
+{ 
+    class SceneEditor;
+
     class SceneExporter
     {
     public:
         friend class Scene;
+
         enum : uint32_t
         {
             ExportGlobalSettings = 0x1,
@@ -52,12 +55,14 @@ namespace Falcor
             ExportAll = 0xFFFFFFFF
         };
 
-        static bool saveScene(const std::string& filename, const Scene* pScene, uint32_t exportOptions = ExportAll);
+        static bool saveScene(const std::string& filename, const Scene* pScene, uint32_t exportOptions = ExportAll, const SceneEditor* pSceneEditor = nullptr);
 
         static const uint32_t kVersion = 2;
 
     private:
-        SceneExporter(const Scene* pScene, const std::string& filename) : mpScene(pScene), mFilename(filename) {};
+        SceneExporter(const Scene* pScene, const std::string& filename, const SceneEditor* pSceneEditor)
+            : mpScene(pScene), mFilename(filename), mpSceneEditor(pSceneEditor) {};
+
         bool save(uint32_t exportOptions);
 
         void writeModels();
@@ -72,6 +77,7 @@ namespace Falcor
         
         rapidjson::Document mJDoc;
         const Scene* mpScene = nullptr;
+        const SceneEditor* mpSceneEditor = nullptr;
         std::string mFilename;
     };
 }

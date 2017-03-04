@@ -33,12 +33,13 @@
 #include "SceneExportImportCommon.h"
 #include "glm/detail/func_trigonometric.hpp"
 #include "Utils/OS.h"
+#include "Graphics/Scene/Editor/SceneEditor.h"
 
 namespace Falcor
 {
-    bool SceneExporter::saveScene(const std::string& filename, const Scene* pScene, uint32_t exportOptions)
+    bool SceneExporter::saveScene(const std::string& filename, const Scene* pScene, uint32_t exportOptions, const SceneEditor* pSceneEditor)
     {
-        SceneExporter exporter(pScene, filename);
+        SceneExporter exporter(pScene, filename, pSceneEditor);
         return exporter.save(exportOptions);
     }
 
@@ -140,7 +141,21 @@ namespace Falcor
         addVector(jval, Allocator, SceneKeys::kAmbientIntensity, mpScene->getAmbientIntensity());
     }
 
-    void createModelValue(const Scene* pScene, uint32_t modelID, rapidjson::Document::AllocatorType& allocator, rapidjson::Value& jmodel)
+    void createMaterialOverrideValue(const Scene* pScene, const SceneEditor* pSceneEditor, uint32_t modelID, rapidjson::Document::AllocatorType& allocator, rapidjson::Value& jOverrideArray)
+    {
+        const auto pModel = pScene->getModel(modelID);
+
+        for (uint32_t i = 0; i < pModel->getMeshCount(); i++)
+        {
+            rapidjson::Value matValue(rapidjson::kObjectType);
+            addLiteral(matValue, allocator, SceneKeys::kMeshID, i);
+            addLiteral(matValue, allocator, SceneKeys::kMaterialID, 0); // #TODO FIX GETTING MATERIAL IDs
+
+            jOverrideArray.PushBack(matValue, allocator);
+        }
+    }
+
+    void createModelValue(const Scene* pScene, const SceneEditor* pSceneEditor, uint32_t modelID, rapidjson::Document::AllocatorType& allocator, rapidjson::Value& jmodel)
     {
         jmodel.SetObject();
         addString(jmodel, allocator, SceneKeys::kFilename, stripDataDirectories(pScene->getModel(modelID)->getFilename()));
@@ -149,6 +164,13 @@ namespace Falcor
         if (pScene->getModel(modelID)->hasAnimations())
         {
             addLiteral(jmodel, allocator, SceneKeys::kActiveAnimation, pScene->getModel(modelID)->getActiveAnimation());
+        }
+
+        if (pSceneEditor && pSceneEditor->hasMaterialOverrides(modelID))
+        {
+            rapidjson::Value jsonOverridesArray(rapidjson::kArrayType);
+            createMaterialOverrideValue(pScene, pSceneEditor, modelID, allocator, jsonOverridesArray);
+            addJsonValue(jmodel, allocator, SceneKeys::kMaterialOverrides, jsonOverridesArray);
         }
 
         rapidjson::Value jsonInstanceArray;
@@ -191,7 +213,7 @@ namespace Falcor
         for (uint32_t i = 0; i < mpScene->getModelCount(); i++)
         {
             rapidjson::Value jsonModel;
-            createModelValue(mpScene, i, mJDoc.GetAllocator(), jsonModel);
+            createModelValue(mpScene, mpSceneEditor, i, mJDoc.GetAllocator(), jsonModel);
             jsonModelArray.PushBack(jsonModel, mJDoc.GetAllocator());
         }
         addJsonValue(mJDoc, mJDoc.GetAllocator(), SceneKeys::kModels, jsonModelArray);
@@ -481,14 +503,17 @@ namespace Falcor
     {
         jsonVal.SetObject();
 
+        if (layer.pTexture != nullptr)
+        {
+            addString(jsonVal, allocator, SceneKeys::kMaterialTexture, stripDataDirectories(layer.pTexture->getSourceFilename()));
+        }
+
         addString(jsonVal, allocator, SceneKeys::kMaterialLayerType, getMaterialLayerType((uint32_t)layer.type));
         addString(jsonVal, allocator, SceneKeys::kMaterialNDF, getMaterialLayerNDF((uint32_t)layer.ndf));
         addString(jsonVal, allocator, SceneKeys::kMaterialBlend, getMaterialLayerBlending((uint32_t)layer.blend));
 
         addVector(jsonVal, allocator, SceneKeys::kMaterialAlbedo, layer.albedo);
-
-        addVector(jsonVal, allocator, SceneKeys::kMaterialRoughness, layer.roughness);
-
+        addLiteral(jsonVal, allocator, SceneKeys::kMaterialRoughness, layer.roughness[0]);
         addVector(jsonVal, allocator, SceneKeys::kMaterialExtraParam, layer.extraParam);
     }
 
@@ -498,19 +523,31 @@ namespace Falcor
         addString(jsonMaterial, allocator, SceneKeys::kName, pMaterial->getName());
 
         // ID
-        addLiteral(jsonMaterial, allocator, SceneKeys::kMaterialID, pMaterial->getId());
+        addLiteral(jsonMaterial, allocator, SceneKeys::kID, pMaterial->getId());
 
         // Double-Sided
         addBool(jsonMaterial, allocator, SceneKeys::kMaterialDoubleSided, pMaterial->isDoubleSided());
 
         // Alpha layer
-        addString(jsonMaterial, allocator, SceneKeys::kMaterialAlpha, stripDataDirectories(pMaterial->getAlphaMap()->getSourceFilename()));
+        auto pAlphaMap = pMaterial->getAlphaMap();
+        if (pAlphaMap != nullptr)
+        {
+            addString(jsonMaterial, allocator, SceneKeys::kMaterialAlpha, stripDataDirectories(pAlphaMap->getSourceFilename()));
+        }
 
         // Normal
-        addString(jsonMaterial, allocator, SceneKeys::kMaterialNormal, stripDataDirectories(pMaterial->getNormalMap()->getSourceFilename()));
+        auto pNormalMap = pMaterial->getNormalMap();
+        if (pNormalMap != nullptr)
+        {
+            addString(jsonMaterial, allocator, SceneKeys::kMaterialNormal, stripDataDirectories(pNormalMap->getSourceFilename()));
+        }
 
         // Height
-        addString(jsonMaterial, allocator, SceneKeys::kMaterialHeight, stripDataDirectories(pMaterial->getHeightMap()->getSourceFilename()));
+        auto pHeightMap = pMaterial->getHeightMap();
+        if (pHeightMap != nullptr)
+        {
+            addString(jsonMaterial, allocator, SceneKeys::kMaterialHeight, stripDataDirectories(pHeightMap->getSourceFilename()));
+        }
 
         // Loop over the layers
         if (pMaterial->getNumLayers() > 0)

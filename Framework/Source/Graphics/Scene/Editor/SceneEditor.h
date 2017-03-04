@@ -58,6 +58,12 @@ namespace Falcor
         bool onKeyEvent(const KeyboardEvent& keyEvent);
         void onResizeSwapChain();
 
+        // Check whether a model contains a mesh with material overrides
+        bool hasMaterialOverrides(uint32_t modelID) const;
+
+        // Check whether a mesh has an overridden material
+        bool isMaterialOverridden(uint32_t modelID, uint32_t meshID) const;
+
     private:
 
         SceneEditor(const Scene::SharedPtr& pScene, const uint32_t modelLoadFlags);
