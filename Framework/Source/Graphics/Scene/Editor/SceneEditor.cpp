@@ -387,7 +387,7 @@ namespace Falcor
         std::string filename;
         if (saveFileDialog("Scene files\0*.fscene\0\0", filename))
         {
-            SceneExporter::saveScene(filename, mpScene.get());
+            SceneExporter::saveScene(filename, mpScene.get(), SceneExporter::ExportAll, this);
             mSceneDirty = false;
         }
     }
@@ -868,7 +868,14 @@ namespace Falcor
                     }
                     else if (mpScenePicker->pick(pContext, mouseEvent.pos, mpEditorScene->getActiveCamera()))
                     {
-                        select(mpScenePicker->getPickedModelInstance());
+                        if (mMaterialOverrideMode)
+                        {
+                            select(mpScenePicker->getPickedModelInstance(), mpScenePicker->getPickedMeshInstance());
+                        }
+                        else
+                        {
+                            select(mpScenePicker->getPickedModelInstance());
+                        }
                     }
                     else
                     {
@@ -900,6 +907,28 @@ namespace Falcor
             auto backBufferFBO = gpDevice->getSwapChainFbo();
             mpScenePicker->resizeFBO(backBufferFBO->getWidth(), backBufferFBO->getHeight());
         }
+    }
+
+    bool SceneEditor::hasMaterialOverrides(uint32_t modelID) const
+    {
+        return mChangedMaterials.count(mpScene->getModel(modelID).get()) > 0;
+    }
+
+    bool SceneEditor::isMaterialOverridden(uint32_t modelID, uint32_t meshID) const
+    {
+        const Model* pModel = mpScene->getModel(modelID).get();
+
+        if (mChangedMaterials.count(pModel))
+        {
+            const Mesh* pMesh = pModel->getMesh(meshID).get();
+
+            if (mChangedMaterials.at(pModel).count(pMesh))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     void SceneEditor::setActiveModelInstance(const Scene::ModelInstance::SharedPtr& pModelInstance)
@@ -994,6 +1023,22 @@ namespace Falcor
         }
     }
 
+    void SceneEditor::renderMaterialElements(Gui* pGui)
+    {
+        if (mpScene->getMaterialCount() > 0)
+        {
+            if (pGui->beginGroup("Materials"))
+            {
+                pGui->addCheckBox("Material Override Mode", mMaterialOverrideMode);
+
+                selectMaterial(pGui);
+                applyMaterialOverride(pGui);
+
+                pGui->endGroup();
+            }
+        }
+    }
+
     void SceneEditor::renderCameraElements(Gui* pGui)
     {
         if (pGui->beginGroup(kCamerasStr))
@@ -1078,6 +1123,7 @@ namespace Falcor
         renderPathElements(pGui);
         renderModelElements(pGui);
         renderLightElements(pGui);
+        renderMaterialElements(pGui);
 
         pGui->popWindow();
 
@@ -1169,6 +1215,31 @@ namespace Falcor
         }
     }
 
+    void SceneEditor::select(const Scene::ModelInstance::SharedPtr& pModelInstance, const Model::MeshInstance::SharedPtr& pMeshInstance)
+    {
+        deselect();
+        mpSelectedMesh = pMeshInstance->getObject();
+
+        const auto& pModel = pModelInstance->getObject();
+
+        uint32_t meshID = 0;
+        for (; meshID < pModel->getMeshCount(); meshID++)
+        {
+            if (pModel->getMesh(meshID) == mpSelectedMesh)
+            {
+                break;
+            }
+        }
+
+        // mesh should have been found in the model
+        assert(meshID < pModel->getMeshCount());
+
+        mSelectedMeshString = pModelInstance->getObject()->getName() + " - " + pModelInstance->getName() + " - Mesh " + std::to_string(meshID);
+
+        mpSelectionScene->addModelInstance(pModelInstance);
+        setActiveModelInstance(pModelInstance);
+    }
+
     void SceneEditor::deselect()
     {
         if (mpSelectionScene)
@@ -1180,6 +1251,7 @@ namespace Falcor
 
         mSelectedInstances.clear();
         mSelectedObjectType = ObjectType::None;
+        mpSelectedMesh = nullptr;
     }
 
     void SceneEditor::setActiveGizmo(Gizmo::Type type, bool show)
@@ -1258,6 +1330,8 @@ namespace Falcor
             // Each detachObjectFromPaths searches through all paths' attached objects
             detachObjectFromPaths(pInstance);
         }
+
+        mChangedMaterials.erase(mpScene->getModel(mSelectedModel).get());
 
         mpScene->deleteModel(mSelectedModel);
         mInstanceEulerRotations.erase(mInstanceEulerRotations.begin() + mSelectedModel);
@@ -1601,4 +1675,52 @@ namespace Falcor
         }
     }
 
+    void SceneEditor::selectMaterial(Gui* pGui)
+    {
+        Gui::DropdownList materialList;
+        for (uint32_t i = 0; i < mpScene->getMaterialCount(); i++)
+        {
+            materialList.push_back({ (int32_t)i, mpScene->getMaterial(i)->getName() });
+        }
+
+        pGui->addDropdown("Materials", materialList, mSelectedMaterial);
+    }
+
+    void SceneEditor::applyMaterialOverride(Gui* pGui)
+    {
+        if (mpSelectedMesh != nullptr)
+        {
+            pGui->addText(mSelectedMeshString.c_str());
+
+            const Model* pModel = mpScene->getModel(mSelectedModel).get();
+
+            if (pGui->addButton("Apply to Mesh"))
+            {
+                // Save original material
+                mChangedMaterials[pModel][mpSelectedMesh.get()] = mpSelectedMesh->getMaterial();
+
+                mpSelectedMesh->setMaterial(mpScene->getMaterial(mSelectedMaterial));
+            }
+
+            // Check if mesh has been overridden
+            if (mChangedMaterials.count(pModel))
+            {
+                if (pGui->addButton("Revert Override", true))
+                {
+                    auto& modelBucket = mChangedMaterials[pModel];
+                    if (modelBucket.count(mpSelectedMesh.get()))
+                    {
+                        mpSelectedMesh->setMaterial(modelBucket[mpSelectedMesh.get()]);
+
+                        // Cleanup
+                        modelBucket.erase(mpSelectedMesh.get());
+                        if (modelBucket.empty())
+                        {
+                            mChangedMaterials.erase(pModel);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

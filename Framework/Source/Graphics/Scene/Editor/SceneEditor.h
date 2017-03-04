@@ -71,6 +71,7 @@ namespace Falcor
         void renderLightElements(Gui* pGui);
         void renderGlobalElements(Gui* pGui);
         void renderPathElements(Gui* pGui);
+        void renderMaterialElements(Gui* pGui);
 
         // Model functions
         void addModel(Gui* pGui);
@@ -113,6 +114,10 @@ namespace Falcor
         void startPathEditor(Gui* pGui);
         void startPathEditor();
         void setObjectPath(Gui* pGui, const IMovableObject::SharedPtr& pMovable, const std::string& objType);
+
+        // Materials
+        void selectMaterial(Gui* pGui);
+        void applyMaterialOverride(Gui* pGui);
 
         // Global functions
         void setAmbientIntensity(Gui* pGui);
@@ -169,6 +174,7 @@ namespace Falcor
         };
 
         std::string getUniqueNumberedName(const std::string& baseName, uint32_t idSuffix, const std::set<std::string>& nameMap) const;
+        // #TODO wrap these in a container to handle new types, add one for materials
         std::set<std::string> mInstanceNames;
         std::set<std::string> mCameraNames;
         std::set<std::string> mLightNames;
@@ -178,6 +184,7 @@ namespace Falcor
         //
 
         void select(const Scene::ModelInstance::SharedPtr& pModelInstance);
+        void select(const Scene::ModelInstance::SharedPtr& pModelInstance, const Model::MeshInstance::SharedPtr& pMeshInstance);
         void deselect();
 
         void setActiveModelInstance(const Scene::ModelInstance::SharedPtr& pModelInstance);
@@ -188,6 +195,7 @@ namespace Falcor
         uint32_t mSelectedCamera = 0;
         uint32_t mSelectedLight = 0;
         uint32_t mSelectedPath = 0;
+        uint32_t mSelectedMaterial = 0;
 
         Picking::UniquePtr mpScenePicker;
 
@@ -240,6 +248,18 @@ namespace Falcor
         // Maps between light models and master scene light ID
         std::unordered_map<uint32_t, uint32_t> mLightIDEditorToScene;
         std::unordered_map<uint32_t, uint32_t> mLightIDSceneToEditor;
+
+        //
+        // Material Override
+        //
+
+        bool mMaterialOverrideMode = false;
+        std::string mSelectedMeshString;
+        Mesh::SharedPtr mpSelectedMesh;
+
+        // Stores original materials for overridden meshes so user can revert them
+        using MeshToMaterial = std::unordered_map<const Mesh*, Material::SharedPtr>;
+        std::unordered_map<const Model*, MeshToMaterial> mChangedMaterials;
 
         //
         // Paths
