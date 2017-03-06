@@ -33,9 +33,10 @@
 #include "glm/vec3.hpp"
 #include "glm/vec4.hpp"
 #include "Scene.h"
+#include "Graphics/Scene/Editor/SceneEditor.h"
 
 namespace Falcor
-{    
+{
     class SceneImporter
     {
     protected:
@@ -65,6 +66,7 @@ namespace Falcor
         bool loadIncludeFile(const std::string& Include);
 
         bool createModel(const rapidjson::Value& jsonModel);
+        bool setMaterialOverrides(const rapidjson::Value& jsonVal, const Model::SharedPtr& pModel);
         bool createModelInstances(const rapidjson::Value& jsonVal, const Model::SharedPtr& pModel);
         bool createPointLight(const rapidjson::Value& jsonLight);
         bool createDirLight(const rapidjson::Value& jsonLight);
@@ -93,6 +95,8 @@ namespace Falcor
         std::string mDirectory;
         uint32_t mModelLoadFlags = 0;
         uint32_t mSceneLoadFlags = 0;
+
+        SceneEditor::MaterialOverrides mMaterialOverrides;
 
         using ObjectMap = std::map<std::string, IMovableObject::SharedPtr>;
         bool isNameDuplicate(const std::string& name, const ObjectMap& objectMap, const std::string& objectType) const;

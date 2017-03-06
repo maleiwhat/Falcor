@@ -226,6 +226,13 @@ namespace Falcor
                 }
                 pModel->setName(std::string(jval->value.GetString()));
             }
+            else if (keyName == SceneKeys::kMaterialOverrides)
+            {
+                if (setMaterialOverrides(jval->value, pModel) == false)
+                {
+                    return false;
+                }
+            }
             else if(keyName == SceneKeys::kModelInstances)
             {
                 if(createModelInstances(jval->value, pModel) == false)
@@ -265,6 +272,58 @@ namespace Falcor
         if (instanceAdded == false)
         {
             mpScene->addModelInstance(pModel, "Instance 0");
+        }
+
+        return true;
+    }
+
+    bool SceneImporter::setMaterialOverrides(const rapidjson::Value& jsonVal, const Model::SharedPtr& pModel)
+    {
+        if (jsonVal.IsArray() == false)
+        {
+            error("Material overrides should be an array of objects");
+            return false;
+        }
+
+        // For each override. Each object represents one mesh and one material
+        for (uint32_t i = 0; i < jsonVal.Size(); i++)
+        {
+            const auto& meshOverride = jsonVal[i];
+
+            uint32_t meshID = (uint32_t)-1;
+            uint32_t materialID = (uint32_t)-1;
+
+            // Read object
+            for (auto& it = meshOverride.MemberBegin(); it < meshOverride.MemberEnd(); it++)
+            {
+                std::string key(it->name.GetString());
+
+                if (key == SceneKeys::kMeshID)
+                {
+                    meshID = it->value.GetUint();
+                }
+                else if(key == SceneKeys::kMaterialID)
+                {
+                    materialID = it->value.GetUint();
+                }
+                else
+                {
+                    error("Unknown key \"" + key + "\" when parsing material overrides for model " + pModel->getFilename());
+                    return false;
+                }
+            }
+
+            if (meshID == (uint32_t)-1 || materialID == (uint32_t)-1)
+            {
+                error("Missing data while parsing when parsing material overrides for model " + pModel->getFilename());
+                return false;
+            }
+
+            // Apply override
+            auto& pMesh = pModel->getMesh(meshID);
+
+            mMaterialOverrides.add(pModel.get(), pMesh.get(), pMesh->getMaterial());
+            pMesh->setMaterial(mpScene->getMaterial(materialID));
         }
 
         return true;
@@ -1501,6 +1560,7 @@ namespace Falcor
         {SceneKeys::kLightingScale, &SceneImporter::parseLightingScale},
         {SceneKeys::kCameraSpeed, &SceneImporter::parseCameraSpeed},
 
+        {SceneKeys::kMaterials, &SceneImporter::parseMaterials},
         {SceneKeys::kModels, &SceneImporter::parseModels},
         {SceneKeys::kLights, &SceneImporter::parseLights},
         {SceneKeys::kCameras, &SceneImporter::parseCameras},
@@ -1509,7 +1569,6 @@ namespace Falcor
 
         {SceneKeys::kPaths, &SceneImporter::parsePaths},
         {SceneKeys::kActivePath, &SceneImporter::parseActivePath}, // Should come after ParsePaths
-        {SceneKeys::kMaterials, &SceneImporter::parseMaterials},
         {SceneKeys::kInclude, &SceneImporter::parseIncludes}
     };
 
