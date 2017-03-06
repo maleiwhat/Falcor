@@ -37,35 +37,31 @@ namespace Falcor
     class MaterialEditor
     {
     public:
+
         using UniquePtr = std::unique_ptr<MaterialEditor>;
         using UniqueConstPtr = std::unique_ptr<const MaterialEditor>;
 
-        static UniquePtr create(const Material::SharedPtr& pMaterial, bool useSrgb);
+        static UniquePtr create(const Material::SharedPtr& pMaterial, bool useSrgb, std::function<void(void)> editorFinishedCB = nullptr);
 
         ~MaterialEditor() {};
 
         void renderGui(Gui* pGui);
 
     private:
-        MaterialEditor(const Material::SharedPtr& pMaterial, bool useSrgb);
-
-        Material::SharedPtr mpMaterial = nullptr;
-        Gui::UniquePtr mpGui = nullptr;
-        bool mUseSrgb;
 
         static Gui::DropdownList kLayerTypeDropdown;
         static Gui::DropdownList kLayerBlendDropdown;
         static Gui::DropdownList kLayerNDFDropdown;
 
-        void initLambertLayer() const;
-        void initConductorLayer() const;
-        void initDielectricLayer() const;
-        void initEmissiveLayer() const;
+        MaterialEditor(const Material::SharedPtr& pMaterial, bool useSrgb, std::function<void(void)> editorFinishedCB)
+            : mpMaterial(pMaterial), mUseSrgb(useSrgb), mpEditorFinishedCB(editorFinishedCB) {}
 
-        void closeEditor();
+        Material::SharedPtr mpMaterial = nullptr;
+        Gui::UniquePtr mpGui = nullptr;
+        bool mUseSrgb;
+        std::function<void(void)> mpEditorFinishedCB;
 
-        void saveMaterial();
-
+        bool closeEditor(Gui* pGui);
         void saveMaterial(Gui* pGui);
 
         // Per Material
@@ -95,10 +91,6 @@ namespace Falcor
 
         bool removeLayer(Gui* pGui, uint32_t layerID); // #TODO this should probably return true if removed to terminate rest of elements being rendered
 
-
         Texture::SharedPtr changeTexture(Gui* pGui, const std::string& label, const Texture::SharedPtr& pCurrentTexture);
-
-        static Material* getMaterial(void* pUserData);
-        static MaterialLayerValues* getActiveLayerData(void* pUserData);
     };
 }

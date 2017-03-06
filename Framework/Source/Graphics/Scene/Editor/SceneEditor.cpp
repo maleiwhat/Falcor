@@ -90,30 +90,62 @@ namespace Falcor
     // MaterialOverrides
     //
 
-    void SceneEditor::MaterialOverrides::add(const Model* pModel, const Mesh* pMesh, const Material::SharedPtr& pOrigMaterial)
+    void SceneEditor::MaterialOverrides::replace(const Model* pModel, Mesh* pMesh, const Material::SharedPtr& pNewMaterial)
     {
-        mChangedMaterials[pModel][pMesh] = pOrigMaterial;
+        mOriginalMaterials[pModel][pMesh] = pMesh->getMaterial();
+        mMaterialToMeshes[pNewMaterial.get()].emplace_back(pModel, pMesh);
+
+        pMesh->setMaterial(pNewMaterial);
     }
 
-    void SceneEditor::MaterialOverrides::remove(const Model* pModel)
+    void SceneEditor::MaterialOverrides::revert(const Model* pModel, Mesh* pMesh)
     {
-        mChangedMaterials.erase(pModel);
-    }
-
-    void SceneEditor::MaterialOverrides::remove(const Model* pModel, const Mesh* pMesh)
-    {
-        auto& modelOverrides = mChangedMaterials.at(pModel);
-        modelOverrides.erase(pMesh);
-
-        if (modelOverrides.empty())
+        if (hasOverride(pModel, pMesh) == false)
         {
-            mChangedMaterials.erase(pModel);
+            return;
+        }
+
+        auto& modelOrigMats = mOriginalMaterials.at(pModel);
+        const auto overriddenMaterial = pMesh->getMaterial();
+        const auto& origMaterial = modelOrigMats.at(pMesh);
+
+        // Replace with original material
+        pMesh->setMaterial(origMaterial);
+
+        // Cleanup
+
+        // The material no longer overrides on this mesh
+        auto meshesWithMat = mMaterialToMeshes[overriddenMaterial.get()];
+        meshesWithMat.erase(std::find(meshesWithMat.begin(), meshesWithMat.end(), ModelMesh(pModel, pMesh)));
+        if (meshesWithMat.empty())
+        {
+            mMaterialToMeshes.erase(overriddenMaterial.get());
+        }
+
+        // This mesh no longer has an overridden material
+        modelOrigMats.erase(pMesh);
+        if (modelOrigMats.empty())
+        {
+            mOriginalMaterials.erase(pModel);
+        }
+    }
+
+    void SceneEditor::MaterialOverrides::revert(const Model* pModel)
+    {
+        if (hasOverride(pModel) == false)
+        {
+            return;
+        }
+
+        for (uint32_t i = 0; i < pModel->getMeshCount(); i++)
+        {
+            revert(pModel, pModel->getMesh(i).get());
         }
     }
 
     bool SceneEditor::MaterialOverrides::hasOverride(const Model* pModel) const
     {
-        return mChangedMaterials.count(pModel) > 0;
+        return mOriginalMaterials.count(pModel) > 0;
     }
 
     bool SceneEditor::MaterialOverrides::hasOverride(const Model* pModel, const Mesh* pMesh) const
@@ -124,12 +156,7 @@ namespace Falcor
             return false;
         }
 
-        return mChangedMaterials.at(pModel).count(pMesh) > 0;
-    }
-
-    const Material::SharedPtr& SceneEditor::MaterialOverrides::getOriginalMaterial(const Model* pModel, const Mesh* pMesh) const
-    {
-        return mChangedMaterials.at(pModel).at(pMesh);
+        return mOriginalMaterials.at(pModel).count(pMesh) > 0;
     }
 
     //
@@ -745,6 +772,11 @@ namespace Falcor
         pInstance->setUpVector(pCamera->getUpVector());
     }
 
+    void SceneEditor::materialEditorFinishedCB()
+    {
+        mpMaterialEditor = nullptr;
+    }
+
     void SceneEditor::renderPath(RenderContext* pContext)
     {
         mpDebugDrawer->clear();
@@ -959,28 +991,6 @@ namespace Falcor
         }
     }
 
-    //bool SceneEditor::hasMaterialOverrides(uint32_t modelID) const
-    //{
-    //    return mChangedMaterials.count(mpScene->getModel(modelID).get()) > 0;
-    //}
-
-    //bool SceneEditor::isMaterialOverridden(uint32_t modelID, uint32_t meshID) const
-    //{
-    //    const Model* pModel = mpScene->getModel(modelID).get();
-
-    //    if (mChangedMaterials.count(pModel))
-    //    {
-    //        const Mesh* pMesh = pModel->getMesh(meshID).get();
-
-    //        if (mChangedMaterials.at(pModel).count(pMesh))
-    //        {
-    //            return true;
-    //        }
-    //    }
-
-    //    return false;
-    //}
-
     void SceneEditor::setActiveModelInstance(const Scene::ModelInstance::SharedPtr& pModelInstance)
     {
         for (uint32_t modelID = 0; modelID < mpScene->getModelCount(); modelID++)
@@ -1075,19 +1085,20 @@ namespace Falcor
 
     void SceneEditor::renderMaterialElements(Gui* pGui)
     {
-        if (mpScene->getMaterialCount() > 0)
+        if (pGui->beginGroup("Materials"))
         {
-            if (pGui->beginGroup("Materials"))
-            {
-                pGui->addCheckBox("Material Override Mode", mMaterialOverrideMode);
+            pGui->addCheckBox("Mesh Selection Mode", mMaterialOverrideMode);
 
-                addMaterial(pGui);
-                editMaterial(pGui);
+            addMaterial(pGui);
+
+            if (mpScene->getMaterialCount() > 0)
+            {
+                startMaterialEditor(pGui);
                 selectMaterial(pGui);
                 applyMaterialOverride(pGui);
-
-                pGui->endGroup();
             }
+
+            pGui->endGroup();
         }
     }
 
@@ -1388,7 +1399,7 @@ namespace Falcor
             detachObjectFromPaths(pInstance);
         }
 
-        mMaterialOverrides.remove(mpScene->getModel(mSelectedModel).get());
+        mMaterialOverrides.revert(mpScene->getModel(mSelectedModel).get());
 
         mpScene->deleteModel(mSelectedModel);
         mInstanceEulerRotations.erase(mInstanceEulerRotations.begin() + mSelectedModel);
@@ -1744,14 +1755,14 @@ namespace Falcor
         }
     }
 
-    void SceneEditor::editMaterial(Gui* pGui)
+    void SceneEditor::startMaterialEditor(Gui* pGui)
     {
         if (mpMaterialEditor == nullptr)
         {
             if (pGui->addButton("Edit Material", true))
             {
                 // #TODO where to get useSrgb value from?
-                mpMaterialEditor = MaterialEditor::create(mpScene->getMaterial(mSelectedMaterial), false);
+                mpMaterialEditor = MaterialEditor::create(mpScene->getMaterial(mSelectedMaterial), false, [this](){ materialEditorFinishedCB(); });
             }
         }
     }
@@ -1786,9 +1797,7 @@ namespace Falcor
             if (pGui->addButton("Apply to Mesh"))
             {
                 // Save original material
-                mMaterialOverrides.add(pModel, mpSelectedMesh.get(), mpSelectedMesh->getMaterial());
-
-                mpSelectedMesh->setMaterial(mpScene->getMaterial(mSelectedMaterial));
+                mMaterialOverrides.replace(pModel, mpSelectedMesh.get(), mpScene->getMaterial(mSelectedMaterial));
             }
 
             // Check if mesh has been overridden
@@ -1796,10 +1805,7 @@ namespace Falcor
             {
                 if (pGui->addButton("Revert Override", true))
                 {
-                    mpSelectedMesh->setMaterial(mMaterialOverrides.getOriginalMaterial(pModel, mpSelectedMesh.get()));
-
-                    // Cleanup
-                    mMaterialOverrides.remove(pModel, mpSelectedMesh.get());
+                    mMaterialOverrides.revert(pModel, mpSelectedMesh.get());
                 }
             }
         }

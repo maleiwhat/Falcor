@@ -36,22 +36,6 @@
 
 namespace Falcor
 {
-    // #TODO keep or remove?
-    static const std::string kRemoveLayer  = "Remove Layer";
-    static const std::string kAddLayer     = "Add Layer";
-    static const std::string kActiveLayer  = "Active Layer";
-    static const std::string kLayerType    = "Type";
-    static const std::string kLayerNDF     = "NDF";
-    static const std::string kLayerBlend   = "Blend";
-    static const std::string kLayerGroup   = "Layer";
-    static const std::string kAlbedo       = "Color";
-    static const std::string kRoughness    = "Roughness";
-    static const std::string kExtraParam   = "Extra Param";
-    static const std::string kNormal       = "Normal";
-    static const std::string kHeight       = "Height";
-    static const std::string kAlpha        = "Alpha Test";
-    static const std::string kAddTexture   = "Load Texture";
-    static const std::string kClearTexture = "Clear Texture";
 
     Gui::DropdownList MaterialEditor::kLayerTypeDropdown =
     {
@@ -91,57 +75,18 @@ namespace Falcor
         return pTexture;
     }
 
-    MaterialEditor::UniquePtr MaterialEditor::create(const Material::SharedPtr& pMaterial, bool useSrgb)
+    MaterialEditor::UniquePtr MaterialEditor::create(const Material::SharedPtr& pMaterial, bool useSrgb, std::function<void(void)> editorFinishedCB)
     {
-        return UniquePtr(new MaterialEditor(pMaterial, useSrgb));
+        return UniquePtr(new MaterialEditor(pMaterial, useSrgb, editorFinishedCB));
     }
-
-    MaterialEditor::MaterialEditor(const Material::SharedPtr& pMaterial, bool useSrgb) : mpMaterial(pMaterial), mUseSrgb(useSrgb)
-    {
-
-        //// The height bias starts with 1 by default. Set it to zero
-        //float zero = 0;
-        //setHeightCB<0>(&zero, this);
-        //initUI();
-    }
-
-#if 0
-    void MaterialEditor::initUI()
-    {
-        mpGui = Gui::create("Material Editor");
-        mpGui->setSize(300, 300);
-        mpGui->setPosition(50, 300);
-
-        mpGui->addButton("Save Material", &MaterialEditor::saveMaterial, this);
-        mpGui->addSeparator();
-        mpGui->addTextBoxWithCallback("Name", &MaterialEditor::setName, &MaterialEditor::getNameCB, this);
-        mpGui->addIntVarWithCallback("ID", &MaterialEditor::setId, &MaterialEditor::getIdCB, this, "", 0);
-        mpGui->addCheckBoxWithCallback("Double-Sided", &MaterialEditor::setDoubleSided, &MaterialEditor::getDoubleSidedCB, this);
-
-        mpGui->addSeparator("");
-
-        initNormalElements();
-        initAlphaElements();
-        initHeightElements();
-
-        mpGui->addSeparator("");
-        mpGui->addButton(kAddLayer, &MaterialEditor::addLayer, this);
-        mpGui->addButton(kRemoveLayer, &MaterialEditor::removeLayerCB, this);
-        mpGui->addSeparator("");
-        mpGui->addIntVarWithCallback(kActiveLayer, &MaterialEditor::setActiveLayer, &MaterialEditor::getActiveLayerCB, this);
-
-        refreshLayerElements();
-    }
-
-#endif
 
     void MaterialEditor::renderGui(Gui* pGui)
     {
         pGui->pushWindow("Material Editor", 400, 600, 20, 300);
 
-        if (pGui->addButton("Save Material"))
+        if (closeEditor(pGui))
         {
-            saveMaterial();
+            return;
         }
 
         pGui->addSeparator();
@@ -214,16 +159,19 @@ namespace Falcor
         pGui->popWindow();
     }
 
-    Material* MaterialEditor::getMaterial(void* pUserData)
+    bool MaterialEditor::closeEditor(Gui* pGui)
     {
-        MaterialEditor* pEditor = (MaterialEditor*)pUserData;
-        Material::SharedPtr pMaterial = pEditor->mpMaterial;
-        return pMaterial.get();
-    }
+        if (pGui->addButton("Close Editor"))
+        {
+            pGui->popWindow();
+            if (mpEditorFinishedCB != nullptr)
+            {
+                mpEditorFinishedCB();
+            }
+            return true;
+        }
 
-    void MaterialEditor::closeEditor()
-    {
-        implement me
+        return false;
     }
 
     void MaterialEditor::saveMaterial(Gui* pGui)
@@ -451,82 +399,5 @@ namespace Falcor
         }
 
         return nullptr;
-    }
-
-#if 0
-    void MaterialEditor::initAlbedoElements() const
-    {
-        load_textures(Albedo);
-        add_value_var(Albedo, "r", 0, 0, FLT_MAX, "Base Color");
-        add_value_var(Albedo, "g", 1, 0, FLT_MAX, "Base Color");
-        add_value_var(Albedo, "b", 2, 0, FLT_MAX, "Base Color");
-        mpGui->nestGroups(kAlbedo, "Base Color");
-        mpGui->nestGroups(kLayerGroup, kAlbedo);
-    }
-
-    void MaterialEditor::initRoughnessElements() const
-    {
-        load_textures(Roughness);
-        add_value_var(Roughness, "Base Roughness", 0, 0, FLT_MAX, kRoughness);
-        mpGui->nestGroups(kLayerGroup, kRoughness);
-    }
-
-    void MaterialEditor::initNormalElements() const
-    {
-        load_textures(Normal);
-    }
-
-    void MaterialEditor::initAlphaElements() const
-    {
-        load_textures(Alpha);
-        add_value_var(Alpha, "Alpha Threshold", 0, 0, 1, kAlpha);
-    }
-
-    void MaterialEditor::initHeightElements() const
-    {
-        load_textures(Height);
-        add_value_var(Height, "Height Bias", 0, -FLT_MAX, FLT_MAX, kHeight);
-        add_value_var(Height, "Height Scale", 1, 0, FLT_MAX, kHeight);
-    }
-
-    void MaterialEditor::initLambertLayer() const
-    {
-        initAlbedoElements();
-    }
-
-    void MaterialEditor::initConductorLayer() const
-    {
-        initAlbedoElements();
-        initRoughnessElements();
-        add_value_var(ExtraParam, "Real Part", 0, 0, FLT_MAX, "IoR");
-        add_value_var(ExtraParam, "Imaginery Part", 1, 0, FLT_MAX, "IoR");
-        mpGui->nestGroups(kLayerGroup, "IoR");
-        initLayerNdfElements();
-    }
-
-    void MaterialEditor::initDielectricLayer() const
-    {
-        initAlbedoElements();
-        initRoughnessElements();
-        add_value_var(ExtraParam, "IoR", 0, 0, FLT_MAX, kLayerGroup);
-    }
-
-    void MaterialEditor::initEmissiveLayer() const
-    {
-        initAlbedoElements();
-    }
-#endif
-
-    void MaterialEditor::saveMaterial()
-    {
-        std::string filename;
-        if(saveFileDialog("Scene files\0*.fscene\0\0", filename))
-        {
-            // Using the scene exporter
-            Scene::SharedPtr pScene = Scene::create();
-            pScene->addMaterial(mpMaterial);
-
-            SceneExporter::saveScene(filename, pScene.get(), SceneExporter::ExportMaterials);
-        }
     }
 }

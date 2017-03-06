@@ -322,8 +322,7 @@ namespace Falcor
             // Apply override
             auto& pMesh = pModel->getMesh(meshID);
 
-            mMaterialOverrides.add(pModel.get(), pMesh.get(), pMesh->getMaterial());
-            pMesh->setMaterial(mpScene->getMaterial(materialID));
+            mMaterialOverrides.replace(pModel.get(), pMesh.get(), mpScene->getMaterial(materialID));
         }
 
         return true;

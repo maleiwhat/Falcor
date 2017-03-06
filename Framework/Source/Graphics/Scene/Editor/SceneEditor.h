@@ -50,14 +50,14 @@ namespace Falcor
         {
         public:
 
-            // Register a material change on a mesh and saves the original
-            void add(const Model* pModel, const Mesh* pMesh, const Material::SharedPtr& pOrigMaterial);
+            // Override a material on a mesh and saves the original
+            void replace(const Model* pModel, Mesh* pMesh, const Material::SharedPtr& pNewMaterial);
 
-            // Remove all registered overrides for a model's meshes
-            void remove(const Model* pModel);
+            // Revert a mesh's material to its original
+            void revert(const Model* pModel, Mesh* pMesh);
 
-            // Unregister an override for a mesh
-            void remove(const Model* pModel, const Mesh* pMesh);
+            // Revert all mesh material overrides for a model
+            void revert(const Model* pModel);
 
             // Check whether a model has any of its meshes' materials overridden
             bool hasOverride(const Model* pModel) const;
@@ -65,14 +65,15 @@ namespace Falcor
             // Check whether a mesh has its material overridden
             bool hasOverride(const Model* pModel, const Mesh* pMesh) const;
 
-            // Get original material for an overridden mesh
-            const Material::SharedPtr& getOriginalMaterial(const Model* pModel, const Mesh* pMesh) const;
-
         private:
 
             // Stores original materials for overridden meshes so user can revert them
             using MeshToMaterial = std::unordered_map<const Mesh*, Material::SharedPtr>;
-            std::unordered_map<const Model*, MeshToMaterial> mChangedMaterials;
+            std::unordered_map<const Model*, MeshToMaterial> mOriginalMaterials;
+
+            // Map of materials from the scene and what meshes they have overridden
+            using ModelMesh = std::pair<const Model*, Mesh*>;
+            std::unordered_map<const Material*, std::vector<ModelMesh>> mMaterialToMeshes;
         };
 
         static UniquePtr create(const Scene::SharedPtr& pScene, const uint32_t modelLoadFlags = 0);
@@ -149,7 +150,7 @@ namespace Falcor
 
         // Materials
         void addMaterial(Gui* pGui);
-        void editMaterial(Gui* pGui);
+        void startMaterialEditor(Gui* pGui);
         void selectMaterial(Gui* pGui);
         void applyMaterialOverride(Gui* pGui);
 
@@ -286,6 +287,8 @@ namespace Falcor
         //
         // Materials
         //
+
+        void materialEditorFinishedCB();
 
         MaterialEditor::UniquePtr mpMaterialEditor;
         bool mMaterialOverrideMode = false;
