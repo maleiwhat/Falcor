@@ -62,6 +62,8 @@ namespace Falcor
         void initDielectricLayer() const;
         void initEmissiveLayer() const;
 
+        void closeEditor();
+
         void saveMaterial();
 
         void saveMaterial(Gui* pGui);

@@ -221,6 +221,11 @@ namespace Falcor
         return pMaterial.get();
     }
 
+    void MaterialEditor::closeEditor()
+    {
+        implement me
+    }
+
     void MaterialEditor::saveMaterial(Gui* pGui)
     {
         MaterialEditor* pEditor = (MaterialEditor*)pGui;

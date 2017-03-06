@@ -1081,6 +1081,8 @@ namespace Falcor
             {
                 pGui->addCheckBox("Material Override Mode", mMaterialOverrideMode);
 
+                addMaterial(pGui);
+                editMaterial(pGui);
                 selectMaterial(pGui);
                 applyMaterialOverride(pGui);
 
@@ -1177,9 +1179,14 @@ namespace Falcor
 
         pGui->popWindow();
 
-        if (mpPathEditor)
+        if (mpPathEditor != nullptr)
         {
             mpPathEditor->render(pGui);
+        }
+
+        if (mpMaterialEditor != nullptr)
+        {
+            mpMaterialEditor->renderGui(pGui);
         }
     }
 
@@ -1725,15 +1732,47 @@ namespace Falcor
         }
     }
 
+    void SceneEditor::addMaterial(Gui* pGui)
+    {
+        if (mpMaterialEditor == nullptr)
+        {
+            if (pGui->addButton("Add Material"))
+            {
+                std::string name("Material" + std::to_string(mpScene->getMaterialCount()));
+                mpScene->addMaterial(Material::create(name));
+            }
+        }
+    }
+
+    void SceneEditor::editMaterial(Gui* pGui)
+    {
+        if (mpMaterialEditor == nullptr)
+        {
+            if (pGui->addButton("Edit Material", true))
+            {
+                // #TODO where to get useSrgb value from?
+                mpMaterialEditor = MaterialEditor::create(mpScene->getMaterial(mSelectedMaterial), false);
+            }
+        }
+    }
+
     void SceneEditor::selectMaterial(Gui* pGui)
     {
-        Gui::DropdownList materialList;
-        for (uint32_t i = 0; i < mpScene->getMaterialCount(); i++)
+        if (mpMaterialEditor == nullptr)
         {
-            materialList.push_back({ (int32_t)i, mpScene->getMaterial(i)->getName() });
-        }
+            Gui::DropdownList materialList;
+            for (uint32_t i = 0; i < mpScene->getMaterialCount(); i++)
+            {
+                materialList.push_back({ (int32_t)i, mpScene->getMaterial(i)->getName() });
+            }
 
-        pGui->addDropdown("Materials", materialList, mSelectedMaterial);
+            pGui->addDropdown("Materials", materialList, mSelectedMaterial);
+        }
+        else
+        {
+            std::string msg = mpScene->getMaterial(mSelectedMaterial)->getName();
+            pGui->addText(msg.c_str());
+        }
     }
 
     void SceneEditor::applyMaterialOverride(Gui* pGui)

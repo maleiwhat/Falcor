@@ -29,6 +29,7 @@
 #include <vector>
 #include <set>
 #include "Graphics/Paths/PathEditor.h"
+#include "Graphics/Material/MaterialEditor.h"
 #include "Utils/DebugDrawer.h"
 #include "Utils/Picking/Picking.h"
 #include "Graphics/Scene/Editor/Gizmo.h"
@@ -147,6 +148,8 @@ namespace Falcor
         void setObjectPath(Gui* pGui, const IMovableObject::SharedPtr& pMovable, const std::string& objType);
 
         // Materials
+        void addMaterial(Gui* pGui);
+        void editMaterial(Gui* pGui);
         void selectMaterial(Gui* pGui);
         void applyMaterialOverride(Gui* pGui);
 
@@ -281,9 +284,10 @@ namespace Falcor
         std::unordered_map<uint32_t, uint32_t> mLightIDSceneToEditor;
 
         //
-        // Material Override
+        // Materials
         //
 
+        MaterialEditor::UniquePtr mpMaterialEditor;
         bool mMaterialOverrideMode = false;
         std::string mSelectedMeshString;
         Mesh::SharedPtr mpSelectedMesh;
