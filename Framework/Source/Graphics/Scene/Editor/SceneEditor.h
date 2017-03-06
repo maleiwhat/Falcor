@@ -45,24 +45,49 @@ namespace Falcor
         using UniquePtr = std::unique_ptr<SceneEditor>;
         using UniqueConstPtr = std::unique_ptr<const SceneEditor>;
 
+        class MaterialOverrides
+        {
+        public:
+
+            // Register a material change on a mesh and saves the original
+            void add(const Model* pModel, const Mesh* pMesh, const Material::SharedPtr& pOrigMaterial);
+
+            // Remove all registered overrides for a model's meshes
+            void remove(const Model* pModel);
+
+            // Unregister an override for a mesh
+            void remove(const Model* pModel, const Mesh* pMesh);
+
+            // Check whether a model has any of its meshes' materials overridden
+            bool hasOverride(const Model* pModel) const;
+
+            // Check whether a mesh has its material overridden
+            bool hasOverride(const Model* pModel, const Mesh* pMesh) const;
+
+            // Get original material for an overridden mesh
+            const Material::SharedPtr& getOriginalMaterial(const Model* pModel, const Mesh* pMesh) const;
+
+        private:
+
+            // Stores original materials for overridden meshes so user can revert them
+            using MeshToMaterial = std::unordered_map<const Mesh*, Material::SharedPtr>;
+            std::unordered_map<const Model*, MeshToMaterial> mChangedMaterials;
+        };
+
         static UniquePtr create(const Scene::SharedPtr& pScene, const uint32_t modelLoadFlags = 0);
-        void renderGui(Gui* pGui);
         ~SceneEditor();
 
         const Camera::SharedPtr& getEditorCamera() const { return mpEditorScene->getActiveCamera(); }
 
         void update(double currentTime);
         void render(RenderContext* pContext);
+        void renderGui(Gui* pGui);
 
         bool onMouseEvent(RenderContext* pContext, const MouseEvent& mouseEvent);
         bool onKeyEvent(const KeyboardEvent& keyEvent);
         void onResizeSwapChain();
 
-        // Check whether a model contains a mesh with material overrides
-        bool hasMaterialOverrides(uint32_t modelID) const;
-
-        // Check whether a mesh has an overridden material
-        bool isMaterialOverridden(uint32_t modelID, uint32_t meshID) const;
+        const MaterialOverrides& getMaterialOverrides() const { return mMaterialOverrides; }
 
     private:
 
@@ -262,10 +287,7 @@ namespace Falcor
         bool mMaterialOverrideMode = false;
         std::string mSelectedMeshString;
         Mesh::SharedPtr mpSelectedMesh;
-
-        // Stores original materials for overridden meshes so user can revert them
-        using MeshToMaterial = std::unordered_map<const Mesh*, Material::SharedPtr>;
-        std::unordered_map<const Model*, MeshToMaterial> mChangedMaterials;
+        MaterialOverrides mMaterialOverrides;
 
         //
         // Paths

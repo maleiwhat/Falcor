@@ -141,38 +141,55 @@ namespace Falcor
         addVector(jval, Allocator, SceneKeys::kAmbientIntensity, mpScene->getAmbientIntensity());
     }
 
-    void createMaterialOverrideValue(const Scene* pScene, const SceneEditor* pSceneEditor, uint32_t modelID, rapidjson::Document::AllocatorType& allocator, rapidjson::Value& jOverrideArray)
+    void createMaterialOverrideValue(const Model* pModel, const SceneEditor::MaterialOverrides& matOverrides, const std::unordered_map<const Material*, uint32_t>& matIDLookup, rapidjson::Document::AllocatorType& allocator, rapidjson::Value& jOverrideArray)
     {
-        const auto pModel = pScene->getModel(modelID);
-
         for (uint32_t i = 0; i < pModel->getMeshCount(); i++)
         {
-            rapidjson::Value matValue(rapidjson::kObjectType);
-            addLiteral(matValue, allocator, SceneKeys::kMeshID, i);
-            addLiteral(matValue, allocator, SceneKeys::kMaterialID, 0); // #TODO FIX GETTING MATERIAL IDs
+            const Mesh* pMesh = pModel->getMesh(i).get();
 
-            jOverrideArray.PushBack(matValue, allocator);
+            if (matOverrides.hasOverride(pModel, pMesh))
+            {
+                // Mesh's material should be found in scene
+                assert(matIDLookup.count(pMesh->getMaterial().get()) > 0);
+
+                rapidjson::Value matValue(rapidjson::kObjectType);
+                addLiteral(matValue, allocator, SceneKeys::kMeshID, i);
+                addLiteral(matValue, allocator, SceneKeys::kMaterialID, matIDLookup.at(pMesh->getMaterial().get())); // #TODO FIX GETTING MATERIAL IDs, Remove the at?
+
+                jOverrideArray.PushBack(matValue, allocator);
+            }
         }
     }
 
-    void createModelValue(const Scene* pScene, const SceneEditor* pSceneEditor, uint32_t modelID, rapidjson::Document::AllocatorType& allocator, rapidjson::Value& jmodel)
+    void createModelValue(const Scene* pScene, const SceneEditor* pSceneEditor, uint32_t modelID, const std::unordered_map<const Material*, uint32_t>& matIDLookup, rapidjson::Document::AllocatorType& allocator, rapidjson::Value& jmodel)
     {
         jmodel.SetObject();
-        addString(jmodel, allocator, SceneKeys::kFilename, stripDataDirectories(pScene->getModel(modelID)->getFilename()));
-        addString(jmodel, allocator, SceneKeys::kName, pScene->getModel(modelID)->getName());
+
+        const Model* pModel = pScene->getModel(modelID).get();
+
+        // Export model properties
+        addString(jmodel, allocator, SceneKeys::kFilename, stripDataDirectories(pModel->getFilename()));
+        addString(jmodel, allocator, SceneKeys::kName, pModel->getName());
 
         if (pScene->getModel(modelID)->hasAnimations())
         {
-            addLiteral(jmodel, allocator, SceneKeys::kActiveAnimation, pScene->getModel(modelID)->getActiveAnimation());
+            addLiteral(jmodel, allocator, SceneKeys::kActiveAnimation, pModel->getActiveAnimation());
         }
 
-        if (pSceneEditor && pSceneEditor->hasMaterialOverrides(modelID))
+        // Export model's meshes' overrides if they exist
+        if (pSceneEditor)
         {
-            rapidjson::Value jsonOverridesArray(rapidjson::kArrayType);
-            createMaterialOverrideValue(pScene, pSceneEditor, modelID, allocator, jsonOverridesArray);
-            addJsonValue(jmodel, allocator, SceneKeys::kMaterialOverrides, jsonOverridesArray);
+            auto& matOverrides = pSceneEditor->getMaterialOverrides();
+
+            if (matOverrides.hasOverride(pModel))
+            {
+                rapidjson::Value jsonOverridesArray(rapidjson::kArrayType);
+                createMaterialOverrideValue(pModel, matOverrides, matIDLookup, allocator, jsonOverridesArray);
+                addJsonValue(jmodel, allocator, SceneKeys::kMaterialOverrides, jsonOverridesArray);
+            }
         }
 
+        // Export model instances
         rapidjson::Value jsonInstanceArray;
         jsonInstanceArray.SetArray();
         for (uint32_t i = 0; i < pScene->getModelInstanceCount(modelID); i++)
@@ -207,13 +224,19 @@ namespace Falcor
             return;
         }
 
+        std::unordered_map<const Material*, uint32_t> matIDLookup;
+        for (uint32_t i = 0; i < mpScene->getMaterialCount(); i++)
+        {
+            matIDLookup.emplace(mpScene->getMaterial(i).get(), i);
+        }
+
         rapidjson::Value jsonModelArray;
         jsonModelArray.SetArray();
 
         for (uint32_t i = 0; i < mpScene->getModelCount(); i++)
         {
             rapidjson::Value jsonModel;
-            createModelValue(mpScene, mpSceneEditor, i, mJDoc.GetAllocator(), jsonModel);
+            createModelValue(mpScene, mpSceneEditor, i, matIDLookup, mJDoc.GetAllocator(), jsonModel);
             jsonModelArray.PushBack(jsonModel, mJDoc.GetAllocator());
         }
         addJsonValue(mJDoc, mJDoc.GetAllocator(), SceneKeys::kModels, jsonModelArray);

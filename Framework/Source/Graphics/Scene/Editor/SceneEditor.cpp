@@ -86,6 +86,56 @@ namespace Falcor
         return pathList;
     }
 
+    //
+    // MaterialOverrides
+    //
+
+    void SceneEditor::MaterialOverrides::add(const Model* pModel, const Mesh* pMesh, const Material::SharedPtr& pOrigMaterial)
+    {
+        mChangedMaterials[pModel][pMesh] = pOrigMaterial;
+    }
+
+    void SceneEditor::MaterialOverrides::remove(const Model* pModel)
+    {
+        mChangedMaterials.erase(pModel);
+    }
+
+    void SceneEditor::MaterialOverrides::remove(const Model* pModel, const Mesh* pMesh)
+    {
+        auto& modelOverrides = mChangedMaterials.at(pModel);
+        modelOverrides.erase(pMesh);
+
+        if (modelOverrides.empty())
+        {
+            mChangedMaterials.erase(pModel);
+        }
+    }
+
+    bool SceneEditor::MaterialOverrides::hasOverride(const Model* pModel) const
+    {
+        return mChangedMaterials.count(pModel) > 0;
+    }
+
+    bool SceneEditor::MaterialOverrides::hasOverride(const Model* pModel, const Mesh* pMesh) const
+    {
+        // Check model first
+        if (hasOverride(pModel) == false)
+        {
+            return false;
+        }
+
+        return mChangedMaterials.at(pModel).count(pMesh) > 0;
+    }
+
+    const Material::SharedPtr& SceneEditor::MaterialOverrides::getOriginalMaterial(const Model* pModel, const Mesh* pMesh) const
+    {
+        return mChangedMaterials.at(pModel).at(pMesh);
+    }
+
+    //
+    // SceneEditor
+    //
+
     void SceneEditor::selectActiveModel(Gui* pGui)
     {
         Gui::DropdownList modelList;
@@ -909,27 +959,27 @@ namespace Falcor
         }
     }
 
-    bool SceneEditor::hasMaterialOverrides(uint32_t modelID) const
-    {
-        return mChangedMaterials.count(mpScene->getModel(modelID).get()) > 0;
-    }
+    //bool SceneEditor::hasMaterialOverrides(uint32_t modelID) const
+    //{
+    //    return mChangedMaterials.count(mpScene->getModel(modelID).get()) > 0;
+    //}
 
-    bool SceneEditor::isMaterialOverridden(uint32_t modelID, uint32_t meshID) const
-    {
-        const Model* pModel = mpScene->getModel(modelID).get();
+    //bool SceneEditor::isMaterialOverridden(uint32_t modelID, uint32_t meshID) const
+    //{
+    //    const Model* pModel = mpScene->getModel(modelID).get();
 
-        if (mChangedMaterials.count(pModel))
-        {
-            const Mesh* pMesh = pModel->getMesh(meshID).get();
+    //    if (mChangedMaterials.count(pModel))
+    //    {
+    //        const Mesh* pMesh = pModel->getMesh(meshID).get();
 
-            if (mChangedMaterials.at(pModel).count(pMesh))
-            {
-                return true;
-            }
-        }
+    //        if (mChangedMaterials.at(pModel).count(pMesh))
+    //        {
+    //            return true;
+    //        }
+    //    }
 
-        return false;
-    }
+    //    return false;
+    //}
 
     void SceneEditor::setActiveModelInstance(const Scene::ModelInstance::SharedPtr& pModelInstance)
     {
@@ -1331,7 +1381,7 @@ namespace Falcor
             detachObjectFromPaths(pInstance);
         }
 
-        mChangedMaterials.erase(mpScene->getModel(mSelectedModel).get());
+        mMaterialOverrides.remove(mpScene->getModel(mSelectedModel).get());
 
         mpScene->deleteModel(mSelectedModel);
         mInstanceEulerRotations.erase(mInstanceEulerRotations.begin() + mSelectedModel);
@@ -1697,28 +1747,20 @@ namespace Falcor
             if (pGui->addButton("Apply to Mesh"))
             {
                 // Save original material
-                mChangedMaterials[pModel][mpSelectedMesh.get()] = mpSelectedMesh->getMaterial();
+                mMaterialOverrides.add(pModel, mpSelectedMesh.get(), mpSelectedMesh->getMaterial());
 
                 mpSelectedMesh->setMaterial(mpScene->getMaterial(mSelectedMaterial));
             }
 
             // Check if mesh has been overridden
-            if (mChangedMaterials.count(pModel))
+            if (mMaterialOverrides.hasOverride(pModel, mpSelectedMesh.get()))
             {
                 if (pGui->addButton("Revert Override", true))
                 {
-                    auto& modelBucket = mChangedMaterials[pModel];
-                    if (modelBucket.count(mpSelectedMesh.get()))
-                    {
-                        mpSelectedMesh->setMaterial(modelBucket[mpSelectedMesh.get()]);
+                    mpSelectedMesh->setMaterial(mMaterialOverrides.getOriginalMaterial(pModel, mpSelectedMesh.get()));
 
-                        // Cleanup
-                        modelBucket.erase(mpSelectedMesh.get());
-                        if (modelBucket.empty())
-                        {
-                            mChangedMaterials.erase(pModel);
-                        }
-                    }
+                    // Cleanup
+                    mMaterialOverrides.remove(pModel, mpSelectedMesh.get());
                 }
             }
         }
