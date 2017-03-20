@@ -139,7 +139,7 @@ namespace Falcor
 
         mpSSAOState = GraphicsState::create();
 
-        mpBlur = GaussianBlur::create();
+        mpBlur = GaussianBlur::create(5, 2.0f);
 
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
